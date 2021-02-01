@@ -20,6 +20,8 @@ import (
 	"math"
 	"sort"
 	"strconv"
+
+	"github.com/nikitaksv/strcase"
 )
 
 const (
@@ -55,28 +57,40 @@ type Property struct {
 
 type Key string
 
+func (k Key) String() string {
+	return string(k)
+}
+
 // CamelCase ex. camelCase
 func (k Key) CamelCase() Key {
-	return k
+	return Key(strcase.ToCamelCase(k.String()))
 }
 
 // PascalCase ex. PascalCase
 func (k Key) PascalCase() Key {
-	return k
+	return Key(strcase.ToPascalCase(k.String()))
 }
 
 // SnakeCase ex. snake_case
 func (k Key) SnakeCase() Key {
-	return k
+	return Key(strcase.ToSnakeCase(k.String()))
 }
 
 // KebabCase ex. kebab-case
 func (k Key) KebabCase() Key {
-	return k
+	return Key(strcase.ToKebabCase(k.String()))
+}
+
+// DotCase ex. dot.case
+func (k Key) DotCase() Key {
+	return Key(strcase.ToDotCase(k.String()))
 }
 
 type Type string
 
+func (t Type) String() string {
+	return string(t)
+}
 func (t Type) Long() Type {
 	return t
 }

@@ -21,22 +21,48 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"text/template"
 
 	"github.com/nikitaksv/jgen/services/generator/meta"
 )
 
 var jsonStr = `
-[
-  {
-    "array_json": [
-      {
-        "b4": [
-          1, true
-        ]
-      }
-    ]
+{
+  "id": 2,
+  "first_name": "Tam",
+  "last_name": "Le-Good",
+  "email": "tlegood1@so-net.ne.jp",
+  "gender": "Bigender",
+  "ip_address": "2.92.36.184",
+  "address" : {
+	"city": "",
+	"street": "",
+	"house": ""
   }
-]
+}
+`
+
+var renderTmpl = `
+<?php
+
+namespace common\models;
+
+using yii\base\BaseObject;
+
+/***
+ * Class {{ .Key.PascalCase }}
+ * @package common\models
+ */
+class {{ .Key.PascalCase }} extends BaseObject
+{ 
+{{ range .Properties }}
+	/**
+	 * @var {{ .Type }}
+	 */
+	public ${{ .Key.CamelCase }};
+{{end}}
+}
 `
 
 func main() {
@@ -47,6 +73,15 @@ func main() {
 
 	bs, _ := json.Marshal(obj)
 	fmt.Println(string(bs))
+
+	tmpl := template.New("page")
+	if tmpl, err = tmpl.Parse(renderTmpl); err != nil {
+		log.Fatal(err)
+	}
+	err = tmpl.Execute(os.Stdout, obj)
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func ParseJSON(data []byte) (*meta.Nest, error) {
