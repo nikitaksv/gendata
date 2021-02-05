@@ -39,6 +39,15 @@ const (
 	TypeArrayFloat       = "arrayFloat"
 )
 
+type Meta struct {
+	Root       Key         `json:"root"`
+	Properties []*Property `json:"properties"`
+}
+
+func (m Meta) Sort() {
+	sortProperties(m.Properties)
+}
+
 type Nest struct {
 	Key        Key         `json:"key"`
 	Type       Type        `json:"type"`
@@ -46,13 +55,17 @@ type Nest struct {
 }
 
 func (n Nest) Sort() {
-	sort.Slice(n.Properties, func(i, j int) bool { return n.Properties[i].Key < n.Properties[j].Key })
+	sortProperties(n.Properties)
 }
 
 type Property struct {
 	Key  Key   `json:"key"`
 	Type Type  `json:"type"`
 	Nest *Nest `json:"nest"`
+}
+
+func sortProperties(props []*Property) {
+	sort.Slice(props, func(i, j int) bool { return props[i].Key < props[j].Key })
 }
 
 type Key string
@@ -98,27 +111,35 @@ func (t Type) Short() Type {
 	return t
 }
 func (t Type) IsNull() bool {
-	return true
+	return t == TypeNull
 }
 func (t Type) IsInt() bool {
-	return true
+	return t == TypeInt
 }
 func (t Type) IsBool() bool {
-	return true
+	return t == TypeBool
 }
 func (t Type) IsFloat() bool {
-	return true
+	return t == TypeFloat
+}
+func (t Type) IsNumber() bool {
+	return t.IsFloat() || t.IsInt()
 }
 func (t Type) IsString() bool {
-	return true
+	return t == TypeString
 }
 func (t Type) IsArray() bool {
-	return true
+	return t == TypeArray ||
+		t == TypeArrayBool ||
+		t == TypeArrayFloat ||
+		t == TypeArrayObject ||
+		t == TypeArrayString
 }
 func (t Type) IsObject() bool {
-	return true
+	return t == TypeObject
 }
 
+// Returning meta-type data
 func TypeOf(v interface{}) Type {
 	switch v.(type) {
 	case []interface{}:
@@ -143,6 +164,7 @@ func TypeOf(v interface{}) Type {
 	}
 }
 
+// If json array have mixed type data. This function detect most superior data type.
 func typeOfArray(arr []interface{}) Type {
 	var t Type
 

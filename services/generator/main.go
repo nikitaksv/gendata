@@ -23,8 +23,6 @@ import (
 	"log"
 	"os"
 	"text/template"
-
-	"github.com/nikitaksv/jgen/services/generator/meta"
 )
 
 var jsonStr = `
