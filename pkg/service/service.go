@@ -17,7 +17,7 @@
 package service
 
 import (
-	"github.com/nikitaksv/jgen/pkg/dto"
+	"github.com/nikitaksv/jgen/pkg/endpoint/dto"
 	"github.com/nikitaksv/jgen/pkg/resources"
 	"github.com/nikitaksv/jgen/pkg/service/validation"
 )

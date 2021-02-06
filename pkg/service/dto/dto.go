@@ -14,16 +14,13 @@
  * limitations under the License.
  */
 
-package validation
+package dto
 
 import (
-	"github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/nikitaksv/jgen/pkg/endpoint/dto"
+	"text/template"
 )
 
-func ValidateGenerateTemplateRequest(r *dto.GenerateTemplateRequest) error {
-	template.Pa
-	return validation.ValidateStruct(&r,
-		validation.Field(&r.Template, validation.Required, validation.Length(5, 50)),
-	)
+type GenerateTemplate struct {
+	Template          *template.Template
+	GeneratedTemplate string
 }
