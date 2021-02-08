@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/nikitaksv/dynjson"
 	"github.com/nikitaksv/strcase"
 )
 
@@ -40,28 +41,43 @@ const (
 )
 
 type Meta struct {
-	Root       Key         `json:"root"`
+	index      int
+	Key        Key         `json:"key"`
+	Type       Type        `json:"type"`
 	Properties []*Property `json:"properties"`
+}
+
+func (m *Meta) UnmarshalJSON(data []byte) error {
+	j := &dynjson.Json{}
+	err := j.UnmarshalJSON(data)
+	if err != nil {
+		return err
+	}
+	parseMap(m, j.Value.(*dynjson.Object))
+
+	return nil
+}
+
+func (m *Meta) getProperty(key Key) (*Property, bool) {
+	for _, p := range m.Properties {
+		if p.Key == key {
+			return p, true
+		}
+	}
+	return nil, false
 }
 
 func (m Meta) Sort() {
 	sortProperties(m.Properties)
 }
 
-type Nest struct {
-	Key        Key         `json:"key"`
-	Type       Type        `json:"type"`
-	Properties []*Property `json:"properties"`
-}
-
-func (n Nest) Sort() {
-	sortProperties(n.Properties)
-}
-
 type Property struct {
+	// for origin order sorting
+	index int
+
 	Key  Key   `json:"key"`
 	Type Type  `json:"type"`
-	Nest *Nest `json:"nest"`
+	Nest *Meta `json:"nest"`
 }
 
 func sortProperties(props []*Property) {
@@ -164,7 +180,7 @@ func TypeOf(v interface{}) Type {
 	}
 }
 
-// If json array have mixed type data. This function detect most superior data type.
+// If json/xml array have mixed type data. This function detect most superior data type.
 func typeOfArray(arr []interface{}) Type {
 	var t Type
 

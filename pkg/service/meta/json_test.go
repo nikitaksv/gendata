@@ -14,31 +14,45 @@
  * limitations under the License.
  */
 
-package service
+package meta
 
 import (
-	"github.com/nikitaksv/jgen/pkg/deps"
-	"github.com/nikitaksv/jgen/pkg/endpoint/dto"
-	"github.com/nikitaksv/jgen/pkg/service/validation"
+	"encoding/json"
+	"testing"
 )
 
-type Service interface {
-	GenerateTemplate(request *dto.GenerateTemplateRequest) (*dto.GenerateTemplateResponse, error)
+func TestMeta_UnmarshalFromJSON(t *testing.T) {
+	bs := []byte(`
+{
+  "a1": "one",
+  "a2": -10,
+  "a3": "ahead",
+  "a4": false,
+  "a5": 17,
+  "a6": "wet",
+  "a7": [
+    {
+      "b1": "one",
+      "b2": "two",
+      "b3": false
+    },
+    {
+      "b1": "one",
+      "b4": 4,
+      "b5": [
+        "five"
+      ],
+      "b6": true
+    }
+  ],
+  "a8": null
 }
+`)
 
-type service struct {
-	deps deps.Deps
-}
+	m := &Meta{}
 
-func (s service) GenerateTemplate(request *dto.GenerateTemplateRequest) (*dto.GenerateTemplateResponse, error) {
-	err := validation.ValidateGenerateTemplateRequest(request)
+	err := json.Unmarshal(bs, &m)
 	if err != nil {
-		return nil, err
+		t.Error(err)
 	}
-
-	return &dto.GenerateTemplateResponse{Data: nil}, nil
-}
-
-func NewService(r deps.Deps) *service {
-	return &service{deps: r}
 }

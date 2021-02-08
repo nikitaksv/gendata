@@ -13,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package resources
+
+// This package exists all service dependencies
+package deps
 
 import (
 	"go.uber.org/zap"
 )
 
-type Resources interface {
+type Deps interface {
 	Logger() *zap.Logger
 }
