@@ -22,7 +22,7 @@ import (
 )
 
 func ValidateGenerateTemplateRequest(r *dto.GenerateTemplateRequest) error {
-	template.Pa
+
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.Template, validation.Required, validation.Length(5, 50)),
 	)

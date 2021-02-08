@@ -18,6 +18,7 @@ package meta
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 )
 
@@ -33,8 +34,8 @@ func TestMeta_UnmarshalFromJSON(t *testing.T) {
   "a7": [
     {
       "b1": "one",
-      "b2": "two",
-      "b3": false
+      "c2": "two",
+      "c3": false
     },
     {
       "b1": "one",
@@ -50,9 +51,11 @@ func TestMeta_UnmarshalFromJSON(t *testing.T) {
 `)
 
 	m := &Meta{}
-
 	err := json.Unmarshal(bs, &m)
 	if err != nil {
 		t.Error(err)
 	}
+
+	jsonBs, _ := json.MarshalIndent(m, "", "  ")
+	fmt.Println(string(jsonBs))
 }
