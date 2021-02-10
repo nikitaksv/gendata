@@ -18,44 +18,21 @@ package meta
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMeta_UnmarshalFromJSON(t *testing.T) {
-	bs := []byte(`
-{
-  "a1": "one",
-  "a2": -10,
-  "a3": "ahead",
-  "a4": false,
-  "a5": 17,
-  "a6": "wet",
-  "a7": [
-    {
-      "b1": "one",
-      "c2": "two",
-      "c3": false
-    },
-    {
-      "b1": "one",
-      "b4": 4,
-      "b5": [
-        "five"
-      ],
-      "b6": true
-    }
-  ],
-  "a8": null
-}
-`)
+	jsonData := `{"a1":"one","a2":-10,"a3":"ahead","a4":false,"a5":17,"a6":"wet","a7":[{"b1":"one","c2":"two","c3":false},{"b1":"one","b4":4,"b5":["five"],"b6":true}],"a8":null}`
+	want := `{"key":"","type":"","properties":[{"key":"a1","type":"string","nest":null},{"key":"a2","type":"int","nest":null},{"key":"a3","type":"string","nest":null},{"key":"a4","type":"bool","nest":null},{"key":"a5","type":"int","nest":null},{"key":"a6","type":"string","nest":null},{"key":"a7","type":"arrayObject","nest":{"key":"a7","type":"object","properties":[{"key":"b1","type":"string","nest":null},{"key":"c2","type":"string","nest":null},{"key":"c3","type":"bool","nest":null},{"key":"b4","type":"int","nest":null},{"key":"b5","type":"arrayString","nest":null},{"key":"b6","type":"bool","nest":null}]}},{"key":"a8","type":"null","nest":null}]}`
 
 	m := &Meta{}
-	err := json.Unmarshal(bs, &m)
+	err := json.Unmarshal([]byte(jsonData), &m)
 	if err != nil {
 		t.Error(err)
 	}
 
-	jsonBs, _ := json.MarshalIndent(m, "", "  ")
-	fmt.Println(string(jsonBs))
+	metaJson, _ := json.Marshal(m)
+	assert.JSONEq(t, want, string(metaJson))
 }

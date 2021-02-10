@@ -15,3 +15,39 @@
  */
 
 package endpoint
+
+import (
+	"context"
+
+	"github.com/go-kit/kit/endpoint"
+	"github.com/nikitaksv/jgen/pkg/dto"
+	"github.com/nikitaksv/jgen/pkg/service"
+	"github.com/nikitaksv/jgen/pkg/validation"
+)
+
+type Endpoints struct {
+	GenerateTemplate endpoint.Endpoint
+}
+
+func New(s service.Service) Endpoints {
+	return Endpoints{
+		GenerateTemplate: MakeGenerateTemplateEndpoint(s),
+	}
+}
+
+func MakeGenerateTemplateEndpoint(s service.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req := request.(*dto.GenerateTemplateRequest)
+
+		err := validation.ValidateGenerateTemplateRequest(*req)
+		if err != nil {
+			return nil, err
+		}
+
+		res, err := s.GenerateTemplate(ctx, req)
+		if err != nil {
+			return nil, err
+		}
+		return res, res.Error
+	}
+}

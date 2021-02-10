@@ -67,8 +67,12 @@ func (m *Meta) getProperty(key Key) (*Property, bool) {
 	return nil, false
 }
 
-func (m Meta) Sort() {
+func (m *Meta) Sort() {
 	sortProperties(m.Properties)
+}
+
+func (m *Meta) SortKeys() {
+	sortPropertiesByKeys(m.Properties)
 }
 
 func parseMap(obj *Meta, aMap *dynjson.Object) {
@@ -350,5 +354,9 @@ type Property struct {
 }
 
 func sortProperties(props []*Property) {
+	sort.Slice(props, func(i, j int) bool { return props[i].index < props[j].index })
+}
+
+func sortPropertiesByKeys(props []*Property) {
 	sort.Slice(props, func(i, j int) bool { return props[i].Key < props[j].Key })
 }

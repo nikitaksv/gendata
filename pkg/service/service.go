@@ -17,28 +17,65 @@
 package service
 
 import (
-	"github.com/nikitaksv/jgen/pkg/deps"
-	"github.com/nikitaksv/jgen/pkg/endpoint/dto"
-	"github.com/nikitaksv/jgen/pkg/service/validation"
+	"bytes"
+	"context"
+	"encoding/json"
+	"text/template"
+
+	"github.com/nikitaksv/jgen/pkg/dto"
+	"github.com/nikitaksv/jgen/pkg/resource"
+	"github.com/nikitaksv/jgen/pkg/service/meta"
 )
 
 type Service interface {
-	GenerateTemplate(request *dto.GenerateTemplateRequest) (*dto.GenerateTemplateResponse, error)
+	GenerateTemplate(ctx context.Context, request *dto.GenerateTemplateRequest) (*dto.GenerateTemplateResponse, error)
 }
 
 type service struct {
-	deps deps.Deps
+	resource resource.Resource
 }
 
-func (s service) GenerateTemplate(request *dto.GenerateTemplateRequest) (*dto.GenerateTemplateResponse, error) {
-	err := validation.ValidateGenerateTemplateRequest(request)
+func (s service) GenerateTemplate(ctx context.Context, request *dto.GenerateTemplateRequest) (*dto.GenerateTemplateResponse, error) {
+	// Create Meta
+	m := meta.Meta{
+		Key:        meta.Key(request.Template.Class.RootName),
+		Type:       meta.TypeString,
+		Properties: nil,
+	}
+	if m.Key.String() == "" {
+		m.Key = "RootClass"
+	}
+
+	// Parse String
+	tmpl, err := template.New(request.Template.Class.RootName).Parse(request.Template.String)
 	if err != nil {
 		return nil, err
 	}
 
-	return &dto.GenerateTemplateResponse{Data: nil}, nil
+	// Parse String
+	err = json.Unmarshal([]byte(request.Schema.String), &m)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate String
+	buf := &bytes.Buffer{}
+	err = tmpl.Execute(buf, m)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dto.GenerateTemplateResponse{
+		Files: []dto.File{
+			{
+				Name:      m.Key.CamelCase().String(),
+				Extension: "php",
+				Bytes:     buf.String(),
+			},
+		},
+	}, nil
 }
 
-func NewService(r deps.Deps) *service {
-	return &service{deps: r}
+func NewService(r resource.Resource) *service {
+	return &service{resource: r}
 }

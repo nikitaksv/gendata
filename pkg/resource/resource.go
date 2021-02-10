@@ -15,12 +15,24 @@
  */
 
 // This package exists all service dependencies
-package deps
+package resource
 
 import (
 	"go.uber.org/zap"
 )
 
-type Deps interface {
+type Resource interface {
 	Logger() *zap.Logger
+}
+
+type resource struct {
+	logger *zap.Logger
+}
+
+func New(logger *zap.Logger) *resource {
+	return &resource{logger: logger}
+}
+
+func (r resource) Logger() *zap.Logger {
+	return r.logger
 }
