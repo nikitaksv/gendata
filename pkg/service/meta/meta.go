@@ -17,6 +17,7 @@
 package meta
 
 import (
+	"encoding/json"
 	"math"
 	"sort"
 	"strconv"
@@ -26,25 +27,39 @@ import (
 )
 
 const (
-	TypeNull        Type = "null"
-	TypeInt              = "int"
-	TypeString           = "string"
-	TypeBool             = "bool"
-	TypeFloat            = "float"
-	TypeObject           = "object"
-	TypeArray            = "array"
-	TypeArrayObject      = "arrayObject"
-	TypeArrayInt         = "arrayInt"
-	TypeArrayString      = "arrayString"
-	TypeArrayBool        = "arrayBool"
-	TypeArrayFloat       = "arrayFloat"
+	TypeNull        = "null"
+	TypeInt         = "int"
+	TypeString      = "string"
+	TypeBool        = "bool"
+	TypeFloat       = "float"
+	TypeObject      = "object"
+	TypeArray       = "array"
+	TypeArrayObject = "arrayObject"
+	TypeArrayInt    = "arrayInt"
+	TypeArrayString = "arrayString"
+	TypeArrayBool   = "arrayBool"
+	TypeArrayFloat  = "arrayFloat"
 )
 
+type TypeAliases map[string]string
+
+func (a TypeAliases) Apply(t string) string {
+	if nT, ok := a[t]; ok && nT != "" {
+		return nT
+	}
+	return t
+}
+func (a TypeAliases) Add(k, v string) TypeAliases {
+	a[k] = v
+	return a
+}
+
 type Meta struct {
-	index      int
-	Key        Key         `json:"key"`
-	Type       Type        `json:"type"`
-	Properties []*Property `json:"properties"`
+	index       int
+	Key         Key         `json:"key"`
+	Type        *Type       `json:"type"`
+	TypeAliases TypeAliases `json:"-"`
+	Properties  []*Property `json:"properties"`
 }
 
 func (m *Meta) UnmarshalJSON(data []byte) error {
@@ -80,7 +95,7 @@ func parseMap(obj *Meta, aMap *dynjson.Object) {
 		prop := &Property{
 			index: k,
 			Key:   Key(v.Key),
-			Type:  TypeOf(v.Value),
+			Type:  TypeOf(v.Value, obj.TypeAliases),
 			Nest:  nil,
 		}
 
@@ -88,21 +103,22 @@ func parseMap(obj *Meta, aMap *dynjson.Object) {
 		case *dynjson.Object:
 			nestObj := v.Value.(*dynjson.Object)
 			newObj := &Meta{
-				Key:        prop.Key,
-				Type:       TypeOf(v.Value),
-				Properties: make([]*Property, 0, len(nestObj.Properties)),
+				Key:         prop.Key,
+				Type:        TypeOf(v.Value, obj.TypeAliases),
+				TypeAliases: obj.TypeAliases,
+				Properties:  make([]*Property, 0, len(nestObj.Properties)),
 			}
 			parseMap(newObj, nestObj)
 			prop.Nest = newObj
 		case *dynjson.Array:
 			nestedObj := &Meta{
-				Key:        prop.Key,
-				Type:       TypeOf(v.Value),
-				Properties: nil,
+				Key:         prop.Key,
+				Type:        TypeOf(v.Value, obj.TypeAliases),
+				TypeAliases: obj.TypeAliases,
+				Properties:  nil,
 			}
 			if valObj, ok := mergeArray(v.Value.(*dynjson.Array)).Elements[0].(*dynjson.Object); ok {
 				parseMap(nestedObj, valObj)
-				nestedObj.Type = TypeObject
 				prop.Nest = nestedObj
 			}
 		}
@@ -206,11 +222,29 @@ func (k Key) DotCase() Key {
 	return Key(strcase.ToDotCase(k.String()))
 }
 
-type Type string
+type Type struct {
+	origin string
+	alias  string
+}
+
+func (t Type) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.String())
+}
+
+func NewType(t string, a string) *Type {
+	return &Type{
+		origin: t,
+		alias:  a,
+	}
+}
 
 func (t Type) String() string {
-	return string(t)
+	if t.alias != "" {
+		return t.alias
+	}
+	return t.origin
 }
+
 func (t Type) Long() Type {
 	return t
 }
@@ -218,66 +252,66 @@ func (t Type) Short() Type {
 	return t
 }
 func (t Type) IsNull() bool {
-	return t == TypeNull
+	return t.origin == TypeNull
 }
 func (t Type) IsInt() bool {
-	return t == TypeInt
+	return t.origin == TypeInt
 }
 func (t Type) IsBool() bool {
-	return t == TypeBool
+	return t.origin == TypeBool
 }
 func (t Type) IsFloat() bool {
-	return t == TypeFloat
+	return t.origin == TypeFloat
 }
 func (t Type) IsNumber() bool {
 	return t.IsFloat() || t.IsInt()
 }
 func (t Type) IsString() bool {
-	return t == TypeString
+	return t.origin == TypeString
 }
 func (t Type) IsArray() bool {
-	return t == TypeArray ||
-		t == TypeArrayBool ||
-		t == TypeArrayFloat ||
-		t == TypeArrayObject ||
-		t == TypeArrayString
+	return t.origin == TypeArray ||
+		t.origin == TypeArrayBool ||
+		t.origin == TypeArrayFloat ||
+		t.origin == TypeArrayObject ||
+		t.origin == TypeArrayString
 }
 func (t Type) IsObject() bool {
-	return t == TypeObject
+	return t.origin == TypeObject
 }
 
 // Returning meta-type data
-func TypeOf(v interface{}) Type {
+func TypeOf(v interface{}, aliases TypeAliases) *Type {
 	switch v.(type) {
 	case []interface{}:
-		return typeOfArray(v.([]interface{}))
+		return typeOfArray(v.([]interface{}), aliases)
 	case *dynjson.Array:
-		return typeOfArray(v.(*dynjson.Array).Elements)
+		return typeOfArray(v.(*dynjson.Array).Elements, aliases)
 	case map[string]interface{}, *dynjson.Object:
-		return TypeObject
+		return NewType(TypeObject, aliases.Apply(TypeObject))
 	case bool:
-		return TypeBool
+		return NewType(TypeBool, aliases.Apply(TypeBool))
 	case float32, float64:
 		vFloat64 := v.(float64)
 		if vFloat64 == math.Trunc(vFloat64) {
-			return TypeInt
+			return NewType(TypeInt, aliases.Apply(TypeInt))
 		}
 
-		return TypeFloat
+		return NewType(TypeFloat, aliases.Apply(TypeFloat))
 	case int, int8, int16, int32, int64:
-		return TypeInt
+		return NewType(TypeInt, aliases.Apply(TypeInt))
 	case string:
-		return TypeString
+		return NewType(TypeString, aliases.Apply(TypeString))
 	default:
-		return TypeNull
+		return NewType(TypeNull, aliases.Apply(TypeNull))
 	}
 }
 
 // If json/xml array have mixed type data. This function detect most superior data type.
-func typeOfArray(arr []interface{}) Type {
-	var t Type
+func typeOfArray(arr []interface{}, aliases TypeAliases) *Type {
+	var t *Type
 
-	mx := map[Type]int{
+	mx := map[string]int{
 		TypeArrayBool:   0,
 		TypeArrayFloat:  0,
 		TypeArrayInt:    0,
@@ -291,9 +325,9 @@ func typeOfArray(arr []interface{}) Type {
 		case map[string]interface{}, *dynjson.Object:
 			mx[TypeArrayObject]++
 		case []interface{}:
-			mx[typeOfArray(v.([]interface{}))]++
+			mx[typeOfArray(v.([]interface{}), aliases).origin]++
 		case *dynjson.Array:
-			mx[typeOfArray(v.(*dynjson.Array).Elements)]++
+			mx[typeOfArray(v.(*dynjson.Array).Elements, aliases).origin]++
 		case int, int8, int16, int32, int64:
 			mx[TypeArrayInt]++
 		case float32, float64:
@@ -330,14 +364,14 @@ func typeOfArray(arr []interface{}) Type {
 	}
 
 	if mx[TypeArray] > 0 {
-		return TypeArray
+		return NewType(TypeArray, aliases.Apply(TypeArray))
 	}
 
 	max := 0
 	for k, v := range mx {
 		if v > max {
 			max = v
-			t = k
+			t = NewType(k, aliases.Apply(k))
 		}
 	}
 
@@ -349,7 +383,7 @@ type Property struct {
 	index int
 
 	Key  Key   `json:"key"`
-	Type Type  `json:"type"`
+	Type *Type `json:"type"`
 	Nest *Meta `json:"nest"`
 }
 

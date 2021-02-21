@@ -26,28 +26,36 @@ import (
 )
 
 type Endpoints struct {
-	GenerateTemplate endpoint.Endpoint
+	Generate endpoint.Endpoint
+	GetTypes endpoint.Endpoint
 }
 
 func New(s service.Service) Endpoints {
 	return Endpoints{
-		GenerateTemplate: MakeGenerateTemplateEndpoint(s),
+		Generate: MakeGenerateEndpoint(s),
+		GetTypes: MakeGetTypesEndpoint(s),
 	}
 }
 
-func MakeGenerateTemplateEndpoint(s service.Service) endpoint.Endpoint {
+func MakeGenerateEndpoint(s service.Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req := request.(*dto.GenerateTemplateRequest)
+		req := request.(*dto.GenerateRequest)
 
-		err := validation.ValidateGenerateTemplateRequest(*req)
+		err := validation.ValidateGenerateRequest(*req)
 		if err != nil {
 			return nil, err
 		}
 
-		res, err := s.GenerateTemplate(ctx, req)
+		res, err := s.Generate(ctx, req)
 		if err != nil {
 			return nil, err
 		}
 		return res, res.Error
+	}
+}
+
+func MakeGetTypesEndpoint(s service.Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		return s.GetTypes(ctx, request.(*dto.GetTypesRequest))
 	}
 }

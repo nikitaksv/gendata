@@ -30,13 +30,23 @@ import (
 func MakeHTTPHandler(e endpoint.Endpoints) http.Handler {
 	r := mux.NewRouter()
 	mw := mux.CORSMethodMiddleware(r)
-	options := []kithttp.ServerOption{}
+	var options []kithttp.ServerOption
 
 	r.Methods("POST").Path("/generate").Handler(
 		mw.Middleware(
 			kithttp.NewServer(
-				e.GenerateTemplate,
+				e.Generate,
 				decodeGenerateTemplateRequest,
+				encodeResponse,
+				options...,
+			),
+		),
+	)
+	r.Methods("GET").Path("/types").Handler(
+		mw.Middleware(
+			kithttp.NewServer(
+				e.GetTypes,
+				decodeGetTypesRequest,
 				encodeResponse,
 				options...,
 			),
@@ -58,11 +68,15 @@ func encode(_ context.Context, w http.ResponseWriter, response interface{}, code
 }
 
 func decodeGenerateTemplateRequest(_ context.Context, r *http.Request) (request interface{}, err error) {
-	req := dto.GenerateTemplateRequest{}
+	req := dto.GenerateRequest{}
 	err = json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		return nil, err
 	}
 
+	return &req, nil
+}
+func decodeGetTypesRequest(_ context.Context, _ *http.Request) (request interface{}, err error) {
+	req := dto.GetTypesRequest{}
 	return &req, nil
 }

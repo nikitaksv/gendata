@@ -25,17 +25,17 @@ const (
 
 type DataType string
 
-type GenerateTemplateRequest struct {
+type GenerateRequest struct {
 	Template Template `json:"template"`
 	Schema   Schema   `json:"schema"`
 }
 
 type Template struct {
-	String    string            `json:"string"`
-	LangType  string            `json:"langType"`
-	SortProps bool              `json:"sortProps"`
-	TypeMap   map[string]string `json:"typeMap"`
-	Class     Class             `json:"class"`
+	Content     string `json:"content"`
+	LangType    string `json:"langType"`
+	SortProps   bool   `json:"sortProps"`
+	TypeAliases Types  `json:"typeAliases"`
+	Class       Class  `json:"class"`
 }
 
 type Class struct {
@@ -44,21 +44,57 @@ type Class struct {
 }
 
 type Schema struct {
-	String string   `json:"string"`
-	Type   DataType `json:"type"`
+	Content string   `json:"content"`
+	Type    DataType `json:"type"`
 }
 
-type GenerateTemplateResponse struct {
+type GenerateResponse struct {
 	Files []File `json:"files"`
 	Error error  `json:"error"`
 }
 
-func (g GenerateTemplateResponse) Failed() error {
+func (g GenerateResponse) Failed() error {
 	return g.Error
 }
 
 type File struct {
 	Name      string `json:"name"`
 	Extension string `json:"extension"`
-	Bytes     string `json:"bytes"`
+	Content   string `json:"content"`
+}
+
+type GetTypesRequest struct{}
+
+type GetTypesResponse Types
+
+type Types struct {
+	Null        string `json:"null"`
+	Int         string `json:"int"`
+	String      string `json:"string"`
+	Bool        string `json:"bool"`
+	Float       string `json:"float"`
+	Object      string `json:"object"`
+	Array       string `json:"array"`
+	ArrayObject string `json:"arrayObject"`
+	ArrayInt    string `json:"arrayInt"`
+	ArrayString string `json:"arrayString"`
+	ArrayBool   string `json:"arrayBool"`
+	ArrayFloat  string `json:"arrayFloat"`
+}
+
+func (t Types) ToMap() map[string]string {
+	return map[string]string{
+		"null":        t.Null,
+		"int":         t.Int,
+		"string":      t.String,
+		"bool":        t.Bool,
+		"float":       t.Float,
+		"object":      t.Object,
+		"array":       t.Array,
+		"arrayObject": t.ArrayObject,
+		"arrayInt":    t.ArrayInt,
+		"arrayString": t.ArrayString,
+		"arrayBool":   t.ArrayBool,
+		"arrayFloat":  t.ArrayFloat,
+	}
 }

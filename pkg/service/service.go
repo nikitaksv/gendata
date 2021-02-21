@@ -28,49 +28,70 @@ import (
 )
 
 type Service interface {
-	GenerateTemplate(ctx context.Context, request *dto.GenerateTemplateRequest) (*dto.GenerateTemplateResponse, error)
+	Generate(ctx context.Context, request *dto.GenerateRequest) (*dto.GenerateResponse, error)
+	GetTypes(ctx context.Context, request *dto.GetTypesRequest) (*dto.GetTypesResponse, error)
 }
 
 type service struct {
 	resource resource.Resource
 }
 
-func (s service) GenerateTemplate(ctx context.Context, request *dto.GenerateTemplateRequest) (*dto.GenerateTemplateResponse, error) {
+func (s service) GetTypes(_ context.Context, _ *dto.GetTypesRequest) (*dto.GetTypesResponse, error) {
+	return &dto.GetTypesResponse{
+		Null:        meta.TypeNull,
+		Int:         meta.TypeInt,
+		String:      meta.TypeString,
+		Bool:        meta.TypeBool,
+		Float:       meta.TypeFloat,
+		Object:      meta.TypeObject,
+		Array:       meta.TypeArray,
+		ArrayObject: meta.TypeArrayObject,
+		ArrayInt:    meta.TypeArrayInt,
+		ArrayString: meta.TypeArrayString,
+		ArrayBool:   meta.TypeArrayBool,
+		ArrayFloat:  meta.TypeArrayFloat,
+	}, nil
+}
+
+func (s service) Generate(_ context.Context, request *dto.GenerateRequest) (*dto.GenerateResponse, error) {
+	// Create TypeAliases
+	tA := meta.TypeAliases(request.Template.TypeAliases.ToMap())
 	// Create Meta
 	m := meta.Meta{
-		Key:        meta.Key(request.Template.Class.RootName),
-		Type:       meta.TypeString,
-		Properties: nil,
+		Key:         meta.Key(request.Template.Class.RootName),
+		Type:        meta.NewType(meta.TypeString, tA.Apply(meta.TypeString)),
+		TypeAliases: tA,
+		Properties:  nil,
 	}
 	if m.Key.String() == "" {
 		m.Key = "RootClass"
 	}
 
-	// Parse String
-	tmpl, err := template.New(request.Template.Class.RootName).Parse(request.Template.String)
+	// Parse Content
+	tmpl, err := template.New(request.Template.Class.RootName).Parse(request.Template.Content)
 	if err != nil {
 		return nil, err
 	}
 
-	// Parse String
-	err = json.Unmarshal([]byte(request.Schema.String), &m)
+	// Parse Content
+	err = json.Unmarshal([]byte(request.Schema.Content), &m)
 	if err != nil {
 		return nil, err
 	}
 
-	// Generate String
+	// Generate Content
 	buf := &bytes.Buffer{}
 	err = tmpl.Execute(buf, m)
 	if err != nil {
 		return nil, err
 	}
 
-	return &dto.GenerateTemplateResponse{
+	return &dto.GenerateResponse{
 		Files: []dto.File{
 			{
 				Name:      m.Key.CamelCase().String(),
-				Extension: "php",
-				Bytes:     buf.String(),
+				Extension: request.Template.LangType,
+				Content:   buf.String(),
 			},
 		},
 	}, nil

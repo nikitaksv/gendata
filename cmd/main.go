@@ -47,7 +47,7 @@ func main() {
 	var ends endpoint.Endpoints
 	{
 		ends = endpoint.New(svc)
-		ends.GenerateTemplate = endpoint.LoggingMiddleware("generateTemplate", logger)(ends.GenerateTemplate)
+		ends.Generate = endpoint.LoggingMiddleware("generateTemplate", logger)(ends.Generate)
 	}
 
 	var h http.Handler

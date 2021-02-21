@@ -21,7 +21,7 @@ import (
 	"github.com/nikitaksv/jgen/pkg/dto"
 )
 
-func ValidateGenerateTemplateRequest(r dto.GenerateTemplateRequest) error {
+func ValidateGenerateRequest(r dto.GenerateRequest) error {
 	return validation.ValidateStruct(&r,
 		validation.Field(
 			&r.Template,
@@ -42,7 +42,7 @@ func ValidateGenerateTemplateRequest(r dto.GenerateTemplateRequest) error {
 
 func ValidateSchema(schema dto.Schema) error {
 	return validation.ValidateStruct(&schema,
-		validation.Field(&schema.String, validation.Required),
+		validation.Field(&schema.Content, validation.Required),
 		validation.Field(
 			&schema.Type,
 			validation.Required,
@@ -53,7 +53,7 @@ func ValidateSchema(schema dto.Schema) error {
 
 func ValidateTemplate(tmpl dto.Template) error {
 	return validation.ValidateStruct(&tmpl,
-		validation.Field(&tmpl.String, validation.Required),
+		validation.Field(&tmpl.Content, validation.Required),
 		validation.Field(&tmpl.LangType, validation.Required),
 	)
 }
