@@ -29,7 +29,7 @@ type resource struct {
 	logger *zap.Logger
 }
 
-func New(logger *zap.Logger) *resource {
+func NewResource(logger *zap.Logger) Resource {
 	return &resource{logger: logger}
 }
 

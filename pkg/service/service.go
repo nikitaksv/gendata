@@ -58,10 +58,12 @@ func (s service) Generate(_ context.Context, request *dto.GenerateRequest) (*dto
 	tA := meta.TypeAliases(request.Template.TypeAliases.ToMap())
 	// Create Meta
 	m := meta.Meta{
-		Key:         meta.Key(request.Template.Class.RootName),
-		Type:        meta.NewType(meta.TypeString, tA.Apply(meta.TypeString)),
-		TypeAliases: tA,
-		Properties:  nil,
+		SortProps:       request.Template.SortProps,
+		Key:             meta.Key(request.Template.Class.PrefixName + request.Template.Class.RootName),
+		PrefixObjectKey: request.Template.Class.PrefixName,
+		Type:            meta.NewType(meta.TypeString, tA.Apply(meta.TypeString)),
+		TypeAliases:     tA,
+		Properties:      nil,
 	}
 	if m.Key.String() == "" {
 		m.Key = "RootClass"
@@ -79,22 +81,30 @@ func (s service) Generate(_ context.Context, request *dto.GenerateRequest) (*dto
 		return nil, err
 	}
 
-	// Generate Content
-	buf := &bytes.Buffer{}
-	err = tmpl.Execute(buf, m)
-	if err != nil {
-		return nil, err
+	var metas []meta.Meta
+	if request.Template.Split {
+		metas = meta.Split(m)
+	} else {
+		metas = append(metas, m)
 	}
 
-	return &dto.GenerateResponse{
-		Files: []dto.File{
-			{
-				Name:      m.Key.CamelCase().String(),
-				Extension: request.Template.LangType,
-				Content:   buf.String(),
-			},
-		},
-	}, nil
+	files := make([]*dto.File, len(metas))
+	buf := &bytes.Buffer{}
+	for i, el := range metas {
+		// Generate Content
+		err = tmpl.Execute(buf, el)
+		if err != nil {
+			return nil, err
+		}
+		files[i] = &dto.File{
+			Name:      el.Key.PascalCase().String(),
+			Extension: request.Template.LangType,
+			Content:   buf.String(),
+		}
+		buf.Reset()
+	}
+
+	return &dto.GenerateResponse{Files: files}, nil
 }
 
 func NewService(r resource.Resource) *service {

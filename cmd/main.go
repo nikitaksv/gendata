@@ -36,7 +36,7 @@ func main() {
 
 	var res resource.Resource
 	{
-		res = resource.New(logger)
+		res = resource.NewResource(logger)
 	}
 
 	var svc service.Service

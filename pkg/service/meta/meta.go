@@ -55,11 +55,13 @@ func (a TypeAliases) Add(k, v string) TypeAliases {
 }
 
 type Meta struct {
-	index       int
-	Key         Key         `json:"key"`
-	Type        *Type       `json:"type"`
-	TypeAliases TypeAliases `json:"-"`
-	Properties  []*Property `json:"properties"`
+	index           int
+	PrefixObjectKey string
+	SortProps       bool
+	Key             Key         `json:"key"`
+	Type            *Type       `json:"type"`
+	TypeAliases     TypeAliases `json:"-"`
+	Properties      []*Property `json:"properties"`
 }
 
 func (m *Meta) UnmarshalJSON(data []byte) error {
@@ -68,8 +70,16 @@ func (m *Meta) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	parseMap(m, j.Value.(*dynjson.Object))
-
+	if jObj, ok := j.Value.(*dynjson.Object); ok {
+		parseMap(m, jObj)
+	} else if jArr, ok := j.Value.(*dynjson.Array); ok {
+		mergedArray := mergeArray(jArr)
+		if len(mergedArray.Elements) > 0 {
+			if valObj, ok := mergedArray.Elements[0].(*dynjson.Object); ok {
+				parseMap(m, valObj)
+			}
+		}
+	}
 	return nil
 }
 
@@ -83,11 +93,15 @@ func (m *Meta) getProperty(key Key) (*Property, bool) {
 }
 
 func (m *Meta) Sort() {
-	sortProperties(m.Properties)
+	if m.SortProps {
+		sortProperties(m.Properties)
+	}
 }
 
 func (m *Meta) SortKeys() {
-	sortPropertiesByKeys(m.Properties)
+	if m.SortProps {
+		sortPropertiesByKeys(m.Properties)
+	}
 }
 
 func parseMap(obj *Meta, aMap *dynjson.Object) {
@@ -103,27 +117,35 @@ func parseMap(obj *Meta, aMap *dynjson.Object) {
 		case *dynjson.Object:
 			nestObj := v.Value.(*dynjson.Object)
 			newObj := &Meta{
-				Key:         prop.Key,
-				Type:        TypeOf(v.Value, obj.TypeAliases),
-				TypeAliases: obj.TypeAliases,
-				Properties:  make([]*Property, 0, len(nestObj.Properties)),
+				PrefixObjectKey: obj.PrefixObjectKey,
+				SortProps:       obj.SortProps,
+				Key:             Key(obj.PrefixObjectKey + prop.Key.String()),
+				Type:            TypeOf(v.Value, obj.TypeAliases),
+				TypeAliases:     obj.TypeAliases,
+				Properties:      make([]*Property, 0, len(nestObj.Properties)),
 			}
 			parseMap(newObj, nestObj)
 			prop.Nest = newObj
 		case *dynjson.Array:
 			nestedObj := &Meta{
-				Key:         prop.Key,
-				Type:        TypeOf(v.Value, obj.TypeAliases),
-				TypeAliases: obj.TypeAliases,
-				Properties:  nil,
+				PrefixObjectKey: obj.PrefixObjectKey,
+				SortProps:       obj.SortProps,
+				Key:             prop.Key,
+				Type:            TypeOf(v.Value, obj.TypeAliases),
+				TypeAliases:     obj.TypeAliases,
+				Properties:      nil,
 			}
-			if valObj, ok := mergeArray(v.Value.(*dynjson.Array)).Elements[0].(*dynjson.Object); ok {
-				parseMap(nestedObj, valObj)
-				prop.Nest = nestedObj
+			mergedArray := mergeArray(v.Value.(*dynjson.Array))
+			if len(mergedArray.Elements) > 0 {
+				if valObj, ok := mergedArray.Elements[0].(*dynjson.Object); ok {
+					parseMap(nestedObj, valObj)
+				}
 			}
+			prop.Nest = nestedObj
 		}
 
 		obj.Properties = append(obj.Properties, prop)
+		obj.SortKeys()
 	}
 }
 
@@ -142,11 +164,13 @@ func mergeArray(arr *dynjson.Array) *dynjson.Array {
 			m = mergeObjects(m, v.(*dynjson.Object))
 		case *dynjson.Array:
 			mergedArray := mergeArray(v.(*dynjson.Array))
-			if mergedObj, ok := mergedArray.Elements[0].(*dynjson.Object); ok {
-				m = mergeObjects(m, mergedObj)
-			} else {
-				res.Elements = append(res.Elements, mergedArray.Elements...)
+			if len(mergedArray.Elements) > 0 {
+				if mergedObj, ok := mergedArray.Elements[0].(*dynjson.Object); ok {
+					m = mergeObjects(m, mergedObj)
+					continue
+				}
 			}
+			res.Elements = append(res.Elements, mergedArray.Elements...)
 		default:
 			res.Elements = append(res.Elements, v)
 		}
@@ -164,22 +188,24 @@ func mergeObjects(maps ...*dynjson.Object) *dynjson.Object {
 		Properties: []*dynjson.Property{},
 	}
 	for _, m := range maps {
-		for i, v := range m.Properties {
+		for _, v := range m.Properties {
 			existsV, exists := result.GetProperty(v.Key)
 			switch v.Value.(type) {
 			case *dynjson.Array:
 				mergedArray := mergeArray(v.Value.(*dynjson.Array))
-				if mergedObj, ok := mergedArray.Elements[0].(*dynjson.Object); ok {
-					result.Properties = append(result.Properties, mergeObjects(v.Value.(*dynjson.Object), mergedObj).Properties...)
-				} else {
-					v.Value = mergedArray
-					result.Properties = append(result.Properties, v)
+				if len(mergedArray.Elements) > 0 {
+					if mergedObj, ok := mergedArray.Elements[0].(*dynjson.Object); ok {
+						result.Properties = append(result.Properties, mergeObjects(v.Value.(*dynjson.Object), mergedObj).Properties...)
+						continue
+					}
 				}
+				v.Value = mergedArray
+				result.Properties = append(result.Properties, v)
 			case *dynjson.Object:
 				if exists {
 					result.Properties = append(result.Properties, mergeObjects(existsV.Value.(*dynjson.Object), v.Value.(*dynjson.Object)).Properties...)
 				} else {
-					result.Properties[i] = v
+					result.Properties = append(result.Properties, v)
 				}
 			default:
 				if !exists {
@@ -228,7 +254,8 @@ type Type struct {
 }
 
 func (t Type) MarshalJSON() ([]byte, error) {
-	return json.Marshal(t.String())
+	bs, err := json.Marshal(t.String())
+	return bs, err
 }
 
 func NewType(t string, a string) *Type {
@@ -276,6 +303,21 @@ func (t Type) IsArray() bool {
 		t.origin == TypeArrayObject ||
 		t.origin == TypeArrayString
 }
+func (t Type) IsArrayObject() bool {
+	return t.origin == TypeArrayObject
+}
+func (t Type) IsArrayBool() bool {
+	return t.origin == TypeArrayBool
+}
+func (t Type) IsArrayInt() bool {
+	return t.origin == TypeArrayInt
+}
+func (t Type) IsArrayFloat() bool {
+	return t.origin == TypeArrayFloat
+}
+func (t Type) IsArrayString() bool {
+	return t.origin == TypeArrayString
+}
 func (t Type) IsObject() bool {
 	return t.origin == TypeObject
 }
@@ -284,9 +326,11 @@ func (t Type) IsObject() bool {
 func TypeOf(v interface{}, aliases TypeAliases) *Type {
 	switch v.(type) {
 	case []interface{}:
-		return typeOfArray(v.([]interface{}), aliases)
+		nT := typeOfArray(v.([]interface{}))
+		return NewType(nT, aliases.Apply(nT))
 	case *dynjson.Array:
-		return typeOfArray(v.(*dynjson.Array).Elements, aliases)
+		nT := typeOfArray(v.(*dynjson.Array).Elements)
+		return NewType(nT, aliases.Apply(nT))
 	case map[string]interface{}, *dynjson.Object:
 		return NewType(TypeObject, aliases.Apply(TypeObject))
 	case bool:
@@ -308,9 +352,7 @@ func TypeOf(v interface{}, aliases TypeAliases) *Type {
 }
 
 // If json/xml array have mixed type data. This function detect most superior data type.
-func typeOfArray(arr []interface{}, aliases TypeAliases) *Type {
-	var t *Type
-
+func typeOfArray(arr []interface{}) string {
 	mx := map[string]int{
 		TypeArrayBool:   0,
 		TypeArrayFloat:  0,
@@ -325,14 +367,19 @@ func typeOfArray(arr []interface{}, aliases TypeAliases) *Type {
 		case map[string]interface{}, *dynjson.Object:
 			mx[TypeArrayObject]++
 		case []interface{}:
-			mx[typeOfArray(v.([]interface{}), aliases).origin]++
+			mx[typeOfArray(v.([]interface{}))]++
 		case *dynjson.Array:
-			mx[typeOfArray(v.(*dynjson.Array).Elements, aliases).origin]++
+			mx[typeOfArray(v.(*dynjson.Array).Elements)]++
 		case int, int8, int16, int32, int64:
 			mx[TypeArrayInt]++
 		case float32, float64:
-			mx[TypeArrayInt] = 0
-			mx[TypeArrayFloat]++
+			vFloat64 := v.(float64)
+			if vFloat64 == math.Trunc(vFloat64) {
+				mx[TypeArrayInt]++
+			} else {
+				mx[TypeArrayInt] = 0
+				mx[TypeArrayFloat]++
+			}
 		case bool:
 			mx[TypeArrayInt] = 0
 			mx[TypeArrayFloat] = 0
@@ -364,18 +411,18 @@ func typeOfArray(arr []interface{}, aliases TypeAliases) *Type {
 	}
 
 	if mx[TypeArray] > 0 {
-		return NewType(TypeArray, aliases.Apply(TypeArray))
+		return TypeArray
 	}
 
 	max := 0
 	for k, v := range mx {
 		if v > max {
 			max = v
-			t = NewType(k, aliases.Apply(k))
+			return k
 		}
 	}
 
-	return t
+	return ""
 }
 
 type Property struct {
@@ -393,4 +440,17 @@ func sortProperties(props []*Property) {
 
 func sortPropertiesByKeys(props []*Property) {
 	sort.Slice(props, func(i, j int) bool { return props[i].Key < props[j].Key })
+}
+
+func Split(m Meta) []Meta {
+	var objects []Meta
+	objects = append(objects, m)
+	for _, prop := range m.Properties {
+		if prop.Type.IsObject() || prop.Type.IsArrayObject() {
+			if prop.Nest != nil {
+				objects = append(objects, Split(*prop.Nest)...)
+			}
+		}
+	}
+	return objects
 }

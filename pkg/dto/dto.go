@@ -34,6 +34,7 @@ type Template struct {
 	Content     string `json:"content"`
 	LangType    string `json:"langType"`
 	SortProps   bool   `json:"sortProps"`
+	Split       bool   `json:"split"`
 	TypeAliases Types  `json:"typeAliases"`
 	Class       Class  `json:"class"`
 }
@@ -49,8 +50,8 @@ type Schema struct {
 }
 
 type GenerateResponse struct {
-	Files []File `json:"files"`
-	Error error  `json:"error"`
+	Files []*File `json:"files"`
+	Error error   `json:"error"`
 }
 
 func (g GenerateResponse) Failed() error {
