@@ -50,11 +50,15 @@ type Schema struct {
 }
 
 type GenerateResponse struct {
+	ErrorResponse
 	Files []*File `json:"files"`
-	Error error   `json:"error"`
 }
 
-func (g GenerateResponse) Failed() error {
+type ErrorResponse struct {
+	Error error `json:"error,omitempty"`
+}
+
+func (g ErrorResponse) Failed() error {
 	return g.Error
 }
 
@@ -66,7 +70,10 @@ type File struct {
 
 type GetTypesRequest struct{}
 
-type GetTypesResponse Types
+type GetTypesResponse struct {
+	ErrorResponse
+	Types
+}
 
 type Types struct {
 	Null        string `json:"null"`

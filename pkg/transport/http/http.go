@@ -22,38 +22,44 @@ import (
 	"net/http"
 
 	kithttp "github.com/go-kit/kit/transport/http"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/nikitaksv/jgen/pkg/dto"
 	"github.com/nikitaksv/jgen/pkg/endpoint"
 )
 
 func MakeHTTPHandler(e endpoint.Endpoints) http.Handler {
+	options := []kithttp.ServerOption{}
+
 	r := mux.NewRouter()
-	mw := mux.CORSMethodMiddleware(r)
-	var options []kithttp.ServerOption
 
-	r.Methods("POST").Path("/generate").Handler(
-		mw.Middleware(
-			kithttp.NewServer(
-				e.Generate,
-				decodeGenerateTemplateRequest,
-				encodeResponse,
-				options...,
-			),
-		),
-	)
-	r.Methods("GET").Path("/types").Handler(
-		mw.Middleware(
-			kithttp.NewServer(
-				e.GetTypes,
-				decodeGetTypesRequest,
-				encodeResponse,
-				options...,
-			),
+	r.Methods("POST", "OPTIONS").Path("/generate").Handler(
+		kithttp.NewServer(
+			e.Generate,
+			decodeGenerateTemplateRequest,
+			encodeResponse,
+			options...,
 		),
 	)
 
-	return r
+	r.Methods("GET", "OPTIONS").Path("/types").Handler(
+		kithttp.NewServer(
+			e.GetTypes,
+			decodeGetTypesRequest,
+			encodeResponse,
+			options...,
+		),
+	)
+
+	hs := handlers.CORS(
+		handlers.AllowedHeaders([]string{"X-Trace-Id"}),
+		handlers.AllowedOrigins([]string{"*"}),
+		handlers.AllowedMethods([]string{"GET", "HEAD", "POST", "PUT", "OPTIONS"}),
+	)(r)
+	hs = handlers.ContentTypeHandler(hs, "application/json")
+	hs = handlers.CompressHandler(hs)
+	hs = handlers.RecoveryHandler()(hs)
+	return hs
 }
 
 func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {

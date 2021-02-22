@@ -50,7 +50,7 @@ func MakeGenerateEndpoint(s service.Service) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		return res, res.Error
+		return res, err
 	}
 }
 

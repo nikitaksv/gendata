@@ -38,18 +38,20 @@ type service struct {
 
 func (s service) GetTypes(_ context.Context, _ *dto.GetTypesRequest) (*dto.GetTypesResponse, error) {
 	return &dto.GetTypesResponse{
-		Null:        meta.TypeNull,
-		Int:         meta.TypeInt,
-		String:      meta.TypeString,
-		Bool:        meta.TypeBool,
-		Float:       meta.TypeFloat,
-		Object:      meta.TypeObject,
-		Array:       meta.TypeArray,
-		ArrayObject: meta.TypeArrayObject,
-		ArrayInt:    meta.TypeArrayInt,
-		ArrayString: meta.TypeArrayString,
-		ArrayBool:   meta.TypeArrayBool,
-		ArrayFloat:  meta.TypeArrayFloat,
+		Types: dto.Types{
+			Null:        meta.TypeNull,
+			Int:         meta.TypeInt,
+			String:      meta.TypeString,
+			Bool:        meta.TypeBool,
+			Float:       meta.TypeFloat,
+			Object:      meta.TypeObject,
+			Array:       meta.TypeArray,
+			ArrayObject: meta.TypeArrayObject,
+			ArrayInt:    meta.TypeArrayInt,
+			ArrayString: meta.TypeArrayString,
+			ArrayBool:   meta.TypeArrayBool,
+			ArrayFloat:  meta.TypeArrayFloat,
+		},
 	}, nil
 }
 
