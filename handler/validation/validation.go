@@ -18,42 +18,36 @@ package validation
 
 import (
 	"github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/nikitaksv/jgen/pkg/dto"
+	pb "github.com/nikitaksv/gendata/proto"
 )
 
-func ValidateGenerateRequest(r dto.GenerateRequest) error {
-	return validation.ValidateStruct(&r,
+func ValidateGenerateRequest(r *pb.GenerateRequest) error {
+	return validation.ValidateStruct(r,
 		validation.Field(
 			&r.Template,
 			validation.Required,
 			validation.By(func(value interface{}) error {
-				return ValidateTemplate(value.(dto.Template))
+				return ValidateTemplate(value.(*pb.Template))
 			}),
 		),
 		validation.Field(
 			&r.Schema,
 			validation.Required,
 			validation.By(func(value interface{}) error {
-				return ValidateSchema(value.(dto.Schema))
+				return ValidateSchema(value.(*pb.Schema))
 			}),
 		),
 	)
 }
 
-func ValidateSchema(schema dto.Schema) error {
-	return validation.ValidateStruct(&schema,
+func ValidateSchema(schema *pb.Schema) error {
+	return validation.ValidateStruct(schema,
 		validation.Field(&schema.Content, validation.Required),
-		validation.Field(
-			&schema.Type,
-			validation.Required,
-			validation.In(dto.DataTypeJson /*, dto.DataTypeToml, dto.DataTypeXml, dto.DataTypeYaml*/),
-		),
 	)
 }
 
-func ValidateTemplate(tmpl dto.Template) error {
-	return validation.ValidateStruct(&tmpl,
+func ValidateTemplate(tmpl *pb.Template) error {
+	return validation.ValidateStruct(tmpl,
 		validation.Field(&tmpl.Content, validation.Required),
-		validation.Field(&tmpl.LangType, validation.Required),
 	)
 }
