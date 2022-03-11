@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/nikitaksv/dynjson"
 	"github.com/nikitaksv/strcase"
 )
 
@@ -45,7 +46,7 @@ type Nest struct {
 	Properties []*Property `json:"properties"`
 }
 
-func (n Nest) Sort() {
+func (n *Nest) Sort() {
 	sort.Slice(n.Properties, func(i, j int) bool { return n.Properties[i].Key < n.Properties[j].Key })
 }
 
@@ -120,19 +121,21 @@ func (t Type) IsObject() bool {
 }
 
 func TypeOf(v interface{}) Type {
-	switch v.(type) {
+	switch vType := v.(type) {
+	case *dynjson.Object:
+		return TypeObject
+	case *dynjson.Array:
+		return typeOfArray(vType.Elements)
 	case []interface{}:
-		return typeOfArray(v.([]interface{}))
+		return typeOfArray(vType)
 	case map[string]interface{}:
 		return TypeObject
 	case bool:
 		return TypeBool
 	case float32, float64:
-		vFloat64 := v.(float64)
-		if vFloat64 == math.Trunc(vFloat64) {
+		if vFloat64, ok := v.(float64); ok && vFloat64 == math.Trunc(vFloat64) {
 			return TypeInt
 		}
-
 		return TypeFloat
 	case int, int8, int16, int32, int64:
 		return TypeInt
@@ -156,11 +159,15 @@ func typeOfArray(arr []interface{}) Type {
 	}
 
 	for _, v := range arr {
-		switch v.(type) {
+		switch vType := v.(type) {
+		case *dynjson.Object:
+			mx[TypeArrayObject]++
+		case *dynjson.Array:
+			mx[typeOfArray(vType.Elements)]++
 		case map[string]interface{}:
 			mx[TypeArrayObject]++
 		case []interface{}:
-			mx[typeOfArray(v.([]interface{}))]++
+			mx[typeOfArray(vType)]++
 		case int, int8, int16, int32, int64:
 			mx[TypeArrayInt]++
 		case float32, float64:
@@ -171,15 +178,14 @@ func typeOfArray(arr []interface{}) Type {
 			mx[TypeArrayFloat] = 0
 			mx[TypeArrayBool]++
 		case string:
-			vS := v.(string)
-			if vFloat64, err := strconv.ParseFloat(vS, 64); err == nil {
+			if vFloat64, err := strconv.ParseFloat(vType, 64); err == nil {
 				if vFloat64 == math.Trunc(vFloat64) {
 					mx[TypeArrayInt]++
 				} else {
 					mx[TypeArrayInt] = 0
 					mx[TypeArrayFloat]++
 				}
-			} else if _, err := strconv.ParseBool(vS); err == nil {
+			} else if _, err := strconv.ParseBool(vType); err == nil {
 				mx[TypeArrayInt] = 0
 				mx[TypeArrayFloat] = 0
 				mx[TypeArrayBool]++
