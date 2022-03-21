@@ -17,28 +17,42 @@
 package meta
 
 import (
+	"github.com/nikitaksv/strcase"
 	"math"
 	"sort"
 	"strconv"
 
 	"github.com/nikitaksv/dynjson"
-	"github.com/nikitaksv/strcase"
 )
 
 const (
-	TypeNull        Type = "null"
-	TypeInt              = "int"
-	TypeString           = "string"
-	TypeBool             = "bool"
-	TypeFloat            = "float"
-	TypeObject           = "object"
-	TypeArray            = "array"
-	TypeArrayObject      = "arrayObject"
-	TypeArrayInt         = "arrayInt"
-	TypeArrayString      = "arrayString"
-	TypeArrayBool        = "arrayBool"
-	TypeArrayFloat       = "arrayFloat"
+	TypeNull        string = "null"
+	TypeInt                = "int"
+	TypeString             = "string"
+	TypeBool               = "bool"
+	TypeFloat              = "float"
+	TypeObject             = "object"
+	TypeArray              = "array"
+	TypeArrayObject        = "arrayObject"
+	TypeArrayInt           = "arrayInt"
+	TypeArrayString        = "arrayString"
+	TypeArrayBool          = "arrayBool"
+	TypeArrayFloat         = "arrayFloat"
 )
+
+type TypeFormatter func(t Type) string
+
+type TypeFormatters struct {
+	Type TypeFormatter `json:"type"`
+	Doc  TypeFormatter `json:"doc"`
+}
+
+type KeyFormatter func(k Key) string
+
+type KeyFormatters struct {
+	Key KeyFormatter `json:"key"`
+	Doc KeyFormatter `json:"doc"`
+}
 
 type Nest struct {
 	Key        Key         `json:"key"`
@@ -63,93 +77,109 @@ func (k Key) String() string {
 }
 
 // CamelCase ex. camelCase
-func (k Key) CamelCase() Key {
-	return Key(strcase.ToCamelCase(k.String()))
+func (k Key) CamelCase() string {
+	return strcase.ToCamelCase(k.String())
 }
 
 // PascalCase ex. PascalCase
-func (k Key) PascalCase() Key {
-	return Key(strcase.ToPascalCase(k.String()))
+func (k Key) PascalCase() string {
+	return strcase.ToPascalCase(k.String())
 }
 
 // SnakeCase ex. snake_case
-func (k Key) SnakeCase() Key {
-	return Key(strcase.ToSnakeCase(k.String()))
+func (k Key) SnakeCase() string {
+	return strcase.ToSnakeCase(k.String())
 }
 
 // KebabCase ex. kebab-case
-func (k Key) KebabCase() Key {
-	return Key(strcase.ToKebabCase(k.String()))
+func (k Key) KebabCase() string {
+	return strcase.ToKebabCase(k.String())
 }
 
 // DotCase ex. dot.case
-func (k Key) DotCase() Key {
-	return Key(strcase.ToDotCase(k.String()))
+func (k Key) DotCase() string {
+	return strcase.ToDotCase(k.String())
 }
 
-type Type string
+type Type struct {
+	Key        Key             `json:"key"`
+	Value      string          `json:"value"`
+	Formatters *TypeFormatters `json:"formatters"`
+}
 
 func (t Type) String() string {
-	return string(t)
+	return t.Formatters.Type(t)
 }
-func (t Type) Long() Type {
-	return t
-}
-func (t Type) Short() Type {
-	return t
+func (t Type) Doc() string {
+	return t.Formatters.Doc(t)
 }
 func (t Type) IsNull() bool {
-	return true
+	return t.Value == TypeNull
 }
 func (t Type) IsInt() bool {
-	return true
+	return t.Value == TypeInt
 }
 func (t Type) IsBool() bool {
-	return true
+	return t.Value == TypeBool
 }
 func (t Type) IsFloat() bool {
-	return true
+	return t.Value == TypeFloat
 }
 func (t Type) IsString() bool {
-	return true
+	return t.Value == TypeString
 }
 func (t Type) IsArray() bool {
-	return true
+	return t.Value == TypeArray || t.Value == TypeArrayObject || t.Value == TypeArrayFloat ||
+		t.Value == TypeArrayBool || t.Value == TypeArrayString || t.Value == TypeArrayInt
 }
 func (t Type) IsObject() bool {
-	return true
+	return t.Value == TypeObject
 }
 
-func TypeOf(v interface{}) Type {
+func TypeOf(key Key, v interface{}, f *TypeFormatters) Type {
+	t := Type{
+		Key:        key,
+		Formatters: f,
+	}
 	switch vType := v.(type) {
 	case *dynjson.Object:
-		return TypeObject
+		t.Value = TypeObject
+		return t
 	case *dynjson.Array:
-		return typeOfArray(vType.Elements)
+		return typeOfArray(key, vType.Elements, f)
 	case []interface{}:
-		return typeOfArray(vType)
+		return typeOfArray(key, vType, f)
 	case map[string]interface{}:
-		return TypeObject
+		t.Value = TypeObject
+		return t
 	case bool:
-		return TypeBool
+		t.Value = TypeBool
+		return t
 	case float32, float64:
+		t.Value = TypeFloat
 		if vFloat64, ok := v.(float64); ok && vFloat64 == math.Trunc(vFloat64) {
-			return TypeInt
+			t.Value = TypeInt
 		}
-		return TypeFloat
+		return t
 	case int, int8, int16, int32, int64:
-		return TypeInt
+		t.Value = TypeInt
+		return t
 	case string:
-		return TypeString
+		t.Value = TypeString
+		return t
 	default:
-		return TypeNull
+		t.Value = TypeNull
+		return t
 	}
 }
 
-func typeOfArray(arr []interface{}) Type {
-	var t Type
+func typeOfArray(key Key, arr []interface{}, f *TypeFormatters) Type {
+	t := Type{
+		Key:        key,
+		Formatters: f,
+	}
 
-	mx := map[Type]int{
+	mx := map[string]int{
 		TypeArrayBool:   0,
 		TypeArrayFloat:  0,
 		TypeArrayInt:    0,
@@ -163,11 +193,11 @@ func typeOfArray(arr []interface{}) Type {
 		case *dynjson.Object:
 			mx[TypeArrayObject]++
 		case *dynjson.Array:
-			mx[typeOfArray(vType.Elements)]++
+			mx[typeOfArray(key, vType.Elements, f).Value]++
 		case map[string]interface{}:
 			mx[TypeArrayObject]++
 		case []interface{}:
-			mx[typeOfArray(vType)]++
+			mx[typeOfArray(key, vType, f).Value]++
 		case int, int8, int16, int32, int64:
 			mx[TypeArrayInt]++
 		case float32, float64:
@@ -203,14 +233,15 @@ func typeOfArray(arr []interface{}) Type {
 	}
 
 	if mx[TypeArray] > 0 {
-		return TypeArray
+		t.Value = TypeArray
+		return t
 	}
 
 	max := 0
 	for k, v := range mx {
 		if v > max {
 			max = v
-			t = k
+			t.Value = k
 		}
 	}
 

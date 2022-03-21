@@ -19,9 +19,12 @@ LexNameDotCase -> {{ name.dotcase }};{{Name.DotCase}}
 LexBeginProps -> {{ properties }};{{Properties}}
 LexEndProps -> {{ /properties }};{{/Properties}}
 LexType -> {{ type }};{{Type}}
-LexTypeShort -> {{ type.short }};{{Type.Short}}
+LexTypeDoc -> {{ type.doc }};{{Type.Doc}}
 LexBeginTypeIsArray -> {{ type.isarray }};{{Type.IsArray}}
 LexEndTypeIsArray -> {{ /type.isarray }};{{/Type.IsArray}}
+
+LexBeginTypeIsObject -> {{ type.isobject }};{{Type.IsObject}}
+LexEndTypeIsObject -> {{ /type.isobject }};{{/Type.IsObject}}
 `)
 	want := []byte(`
 LexNameAsIsCase -> {{ .Key.String }};{{ .Key.String }}
@@ -34,9 +37,12 @@ LexNameDotCase -> {{ .Key.DotCase }};{{ .Key.DotCase }}
 LexBeginProps -> {{- range .Properties }};{{- range .Properties }}
 LexEndProps -> {{- end }};{{- end }}
 LexType -> {{ .Type.String }};{{ .Type.String }}
-LexTypeShort -> {{ .Type.Short }};{{ .Type.Short }}
+LexTypeDoc -> {{ .Type.Doc }};{{ .Type.Doc }}
 LexBeginTypeIsArray -> {{- if .Type.IsArray }};{{- if .Type.IsArray }}
 LexEndTypeIsArray -> {{- end }};{{- end }}
+
+LexBeginTypeIsObject -> {{- if .Type.IsObject }};{{- if .Type.IsObject }}
+LexEndTypeIsObject -> {{- end }};{{- end }}
 `)
 
 	var actual []byte
@@ -58,6 +64,8 @@ func TestLexer_Lex(t *testing.T) {
 {{ /Properties }}
 {{ Type.IsArray }}
 {{ /Type.IsArray }}
+{{ Type.IsObject }}
+{{ /Type.IsObject }}
 `)
 
 	for _, lexers := range StartEndLexers {

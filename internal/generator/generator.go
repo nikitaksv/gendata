@@ -1,59 +1,30 @@
 package generator
 
 import (
+	"bytes"
 	"context"
-	"html/template"
-	"io"
-	"os"
-
 	"github.com/nikitaksv/gendata/internal/generator/meta"
 	"github.com/nikitaksv/gendata/internal/lexer"
 	"github.com/nikitaksv/gendata/internal/syntax"
 	"github.com/pkg/errors"
+	"html/template"
+	"io"
 )
 
 type Option func(opts *Options) error
 
-func WithRootClassName(rootClassName string) Option {
-	return func(opts *Options) error {
-		opts.RootClassName = rootClassName
-		return nil
-	}
-}
-func WithPrefixClassName(prefix string) Option {
-	return func(opts *Options) error {
-		opts.PrefixClassName = prefix
-		return nil
-	}
-}
-func WithSuffixClassName(suffix string) Option {
-	return func(opts *Options) error {
-		opts.SuffixClassName = suffix
-		return nil
-	}
-}
-func WithSortProperties(sort bool) Option {
-	return func(opts *Options) error {
-		opts.SortProperties = sort
-		return nil
-	}
-}
-func WithSplitObjectsByFiles(split bool) Option {
-	return func(opts *Options) error {
-		opts.SplitObjectsByFiles = split
+func WithOptions(opts *Options) Option {
+	return func(opts_ *Options) error {
+		opts_.FileExtension = opts.FileExtension
+		opts_.SplitObjectsByFiles = opts.SplitObjectsByFiles
 		return nil
 	}
 }
 
 type Options struct {
-	// Root object name
-	RootClassName   string
-	PrefixClassName string
-	SuffixClassName string
-	// Sort object properties
-	SortProperties bool
 	// Split nested object by separate template file
-	SplitObjectsByFiles bool
+	SplitObjectsByFiles bool   `json:"split_objects_by_files"`
+	FileExtension       string `json:"-"`
 }
 
 func (o *Options) apply(opts ...Option) error {
@@ -71,7 +42,7 @@ type Generator interface {
 
 type RenderedFile struct {
 	FileName string
-	Content  io.ReadWriteSeeker
+	Content  io.ReadWriter
 }
 
 type generator struct {
@@ -81,7 +52,7 @@ func NewGenerator() Generator {
 	return &generator{}
 }
 
-func (g *generator) Generate(ctx context.Context, in []byte, m *meta.Nest, opts ...Option) ([]*RenderedFile, error) {
+func (g *generator) Generate(_ context.Context, in []byte, m *meta.Nest, opts ...Option) ([]*RenderedFile, error) {
 	for _, l := range lexer.Lexers {
 		in = l.Replace(in)
 	}
@@ -89,27 +60,27 @@ func (g *generator) Generate(ctx context.Context, in []byte, m *meta.Nest, opts 
 		return nil, err
 	}
 
-	options := &Options{
-		RootClassName:       "RootClass",
-		SortProperties:      false,
-		SplitObjectsByFiles: true,
-	}
+	options := &Options{}
 	if err := options.apply(opts...); err != nil {
 		return nil, errors.Wrap(err, "incorrect generator option")
 	}
 
-	nests := nestSplit(m, options)
-	nests[0].Key = meta.Key(options.PrefixClassName + options.RootClassName + options.SuffixClassName)
+	nests := []*meta.Nest{m}
+	if options.SplitObjectsByFiles == true {
+		nests = nestSplit(m, options)
+	}
 
 	renderedFiles := make([]*RenderedFile, 0, len(nests))
 	for _, nest := range nests {
-		tmpl, err := template.New(nest.Key.String()).Parse(string(in))
+		renderedFile := &RenderedFile{FileName: nest.Key.String() + options.FileExtension, Content: &bytes.Buffer{}}
+		tmpl, err := template.New(renderedFile.FileName).Parse(string(in))
 		if err != nil {
 			return nil, errors.Wrap(err, "incorrect data template")
 		}
-		if err := tmpl.Execute(os.Stdout, nest); err != nil {
+		if err := tmpl.Execute(renderedFile.Content, nest); err != nil {
 			return nil, errors.Wrap(err, "incorrect data template")
 		}
+		renderedFiles = append(renderedFiles, renderedFile)
 	}
 
 	return renderedFiles, nil
@@ -118,7 +89,7 @@ func (g *generator) Generate(ctx context.Context, in []byte, m *meta.Nest, opts 
 func nestSplit(m *meta.Nest, opt *Options) []*meta.Nest {
 	nests := []*meta.Nest{
 		{
-			Key:        meta.Key(opt.PrefixClassName + m.Key.String() + opt.SuffixClassName),
+			Key:        m.Key,
 			Type:       m.Type,
 			Properties: make([]*meta.Property, 0, len(m.Properties)),
 		},

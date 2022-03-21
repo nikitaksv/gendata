@@ -55,9 +55,9 @@ var (
 		Token:   regexp.MustCompile(`(?i){{([\s]+)?Type([\s]+)?}}`),
 		replace: []byte(`{{ .Type.String }}`),
 	}
-	LexTypeShort = &Lexer{
-		Token:   regexp.MustCompile(`(?i){{([\s]+)?Type.Short([\s]+)?}}`),
-		replace: []byte(`{{ .Type.Short }}`),
+	LexTypeDoc = &Lexer{
+		Token:   regexp.MustCompile(`(?i){{([\s]+)?Type.Doc([\s]+)?}}`),
+		replace: []byte(`{{ .Type.Doc }}`),
 	}
 	LexBeginTypeIsArray = &Lexer{
 		Token:   regexp.MustCompile(`(?i){{([\s]+)?Type.IsArray([\s]+)?}}`),
@@ -65,6 +65,14 @@ var (
 	}
 	LexEndTypeIsArray = &Lexer{
 		Token:   regexp.MustCompile(`(?i){{([\s]+)?/Type.IsArray([\s]+)?}}`),
+		replace: []byte(`{{- end }}`),
+	}
+	LexBeginTypeIsObject = &Lexer{
+		Token:   regexp.MustCompile(`(?i){{([\s]+)?Type.IsObject([\s]+)?}}`),
+		replace: []byte(`{{- if .Type.IsObject }}`),
+	}
+	LexEndTypeIsObject = &Lexer{
+		Token:   regexp.MustCompile(`(?i){{([\s]+)?/Type.IsObject([\s]+)?}}`),
 		replace: []byte(`{{- end }}`),
 	}
 
@@ -78,9 +86,11 @@ var (
 		LexBeginProps,
 		LexEndProps,
 		LexType,
-		LexTypeShort,
+		LexTypeDoc,
 		LexBeginTypeIsArray,
 		LexEndTypeIsArray,
+		LexBeginTypeIsObject,
+		LexEndTypeIsObject,
 	}
 	StartEndLexers = [][]*Lexer{
 		{
@@ -90,6 +100,10 @@ var (
 		{
 			LexBeginTypeIsArray,
 			LexEndTypeIsArray,
+		},
+		{
+			LexBeginTypeIsObject,
+			LexEndTypeIsObject,
 		},
 	}
 )

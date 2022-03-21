@@ -2,96 +2,123 @@ package parser
 
 import (
 	"encoding/json"
-
 	"github.com/nikitaksv/dynjson"
 	"github.com/nikitaksv/gendata/internal/generator/meta"
 	"github.com/pkg/errors"
 )
 
 type parserJSON struct {
-	Parser
+	Options *Options `json:"options"`
 }
 
-func NewParserJSON() Parser {
-	return &parserJSON{}
+func NewParserJSON(opts ...Option) (Parser, error) {
+	options := &Options{}
+	if err := options.apply(opts...); err != nil {
+		return nil, err
+	}
+	return &parserJSON{
+		Options: options,
+	}, nil
 }
 
-func (p *parserJSON) Parse(data []byte, opts ...Option) (*meta.Nest, error) {
+func (p *parserJSON) className(name meta.Key) string {
+	className := ""
+	if p.Options.PrefixClassName != "" {
+		className = p.Options.PrefixClassName + name.PascalCase() + p.Options.SuffixClassName
+	} else {
+		className = name.String() + p.Options.SuffixClassName
+	}
+	if p.Options.ClassNameFormatter != nil {
+		className = p.Options.ClassNameFormatter(meta.Key(className))
+	}
+
+	return className
+}
+
+func (p *parserJSON) Parse(data []byte) (*meta.Nest, error) {
 	j := &dynjson.Json{}
 	err := json.Unmarshal(data, j)
 	if err != nil {
 		return nil, err
 	}
 
-	options := Options{RootName: "Root"}
-	if err := options.apply(opts...); err != nil {
-		return nil, err
-	}
+	key := meta.Key(p.className(meta.Key(p.Options.RootClassName)))
 
 	// main object
 	obj := &meta.Nest{
-		Key:        meta.Key(options.RootName),
-		Type:       meta.TypeOf(j.Value),
+		Key:        key,
+		Type:       meta.TypeOf(key, j.Value, p.Options.TypeFormatters),
 		Properties: nil,
 	}
 
 	switch vType := j.Value.(type) {
 	case *dynjson.Object:
-		parseMap(obj, vType)
+		p.parseMap(obj, vType)
 	case *dynjson.Array:
-		if valMap, ok := mergeArray(vType).Elements[0].(*dynjson.Object); ok {
-			parseMap(obj, valMap)
+		if valMap, ok := p.mergeArray(vType).Elements[0].(*dynjson.Object); ok {
+			p.parseMap(obj, valMap)
 		}
 	default:
 		return nil, errors.New("undefined type json data: " + vType.(string))
 	}
 
+	if p.Options.SortProperties {
+		obj.Sort()
+	}
+
 	return obj, nil
 }
 
-func parseMap(obj *meta.Nest, aMap *dynjson.Object) {
+func (p *parserJSON) parseMap(obj *meta.Nest, aMap *dynjson.Object) {
 	for _, property := range aMap.Properties {
 		prop := &meta.Property{
 			Key:  meta.Key(property.Key),
-			Type: meta.TypeOf(property.Value),
+			Type: meta.TypeOf(meta.Key(property.Key), property.Value, p.Options.TypeFormatters),
 			Nest: nil,
+		}
+		if prop.Type.IsObject() || prop.Type.Value == meta.TypeArrayObject {
+			prop.Key = meta.Key(p.className(prop.Key))
+			prop.Type.Key = prop.Key
 		}
 
 		switch vType := property.Value.(type) {
 		case *dynjson.Object:
 			nestedObj := &meta.Nest{
 				Key:        prop.Key,
-				Type:       meta.TypeOf(property),
+				Type:       meta.TypeOf(prop.Key, property, p.Options.TypeFormatters),
 				Properties: nil,
 			}
-			parseMap(nestedObj, vType)
+			p.parseMap(nestedObj, vType)
 			prop.Nest = nestedObj
 		case *dynjson.Array:
 			nestedObj := &meta.Nest{
 				Key:        prop.Key,
-				Type:       meta.TypeOf(property.Value),
+				Type:       meta.TypeOf(prop.Key, property.Value, p.Options.TypeFormatters),
 				Properties: nil,
 			}
-			if valMap, ok := mergeArray(vType).Elements[0].(*dynjson.Object); ok {
-				parseMap(nestedObj, valMap)
+			if valMap, ok := p.mergeArray(vType).Elements[0].(*dynjson.Object); ok {
+				p.parseMap(nestedObj, valMap)
 				prop.Nest = nestedObj
 			}
 		}
 
 		obj.Properties = append(obj.Properties, prop)
 	}
+	if p.Options.SortProperties {
+		obj.Sort()
+	}
 }
 
-func mergeArray(arr *dynjson.Array) *dynjson.Array {
+func (p *parserJSON) mergeArray(arr *dynjson.Array) *dynjson.Array {
 	res := &dynjson.Array{}
 	m := &dynjson.Object{}
 	for _, v := range arr.Elements {
 		switch vType := v.(type) {
 		case *dynjson.Object:
-			m = mergeMap(vType, m)
+			m = p.mergeMap(vType, m)
 		case *dynjson.Array:
-			if valMap, ok := mergeArray(vType).Elements[0].(*dynjson.Object); ok {
-				m = mergeMap(valMap, m)
+			if valMap, ok := p.mergeArray(vType).Elements[0].(*dynjson.Object); ok {
+				m = p.mergeMap(valMap, m)
 			}
 		default:
 			res.Elements = append(res.Elements, v)
@@ -105,7 +132,7 @@ func mergeArray(arr *dynjson.Array) *dynjson.Array {
 	return res
 }
 
-func mergeMap(maps ...*dynjson.Object) *dynjson.Object {
+func (p *parserJSON) mergeMap(maps ...*dynjson.Object) *dynjson.Object {
 	result := &dynjson.Object{}
 	for _, m := range maps {
 		for _, property := range m.Properties {
@@ -113,15 +140,15 @@ func mergeMap(maps ...*dynjson.Object) *dynjson.Object {
 
 			switch vType := property.Value.(type) {
 			case *dynjson.Array:
-				dynjsonSetProperty(result, property.Key, mergeArray(vType))
+				dynjsonSetProperty(result, property.Key, p.mergeArray(vType))
 			case *dynjson.Object:
-				if exists && meta.TypeOf(existsProp.Value) == meta.TypeObject {
-					dynjsonSetProperty(result, property.Key, mergeMap(vType, existsProp.Value.(*dynjson.Object)))
+				if exists && meta.TypeOf(meta.Key(property.Key), existsProp.Value, p.Options.TypeFormatters).IsObject() {
+					dynjsonSetProperty(result, property.Key, p.mergeMap(vType, existsProp.Value.(*dynjson.Object)))
 				} else {
 					dynjsonSetProperty(result, property.Key, property.Value)
 				}
 			default:
-				if !exists || meta.TypeOf(property) != meta.TypeNull {
+				if !exists || !meta.TypeOf(meta.Key(property.Key), property, p.Options.TypeFormatters).IsNull() {
 					dynjsonSetProperty(result, property.Key, property.Value)
 				}
 			}
