@@ -66,15 +66,42 @@ func TestLexer_Lex(t *testing.T) {
 {{ /Type.IsArray }}
 {{ Type.IsObject }}
 {{ /Type.IsObject }}
+{{ SPLIT }}
+{{ /SPLIT }}
 `)
 
 	for _, lexers := range StartEndLexers {
 		var lexs []string
 		for _, lex := range lexers {
-			for _, bs := range lex.Lex(in) {
-				lexs = append(lexs, string(bs))
+			for token := range lex.Lex(in) {
+				lexs = append(lexs, token)
 			}
 		}
 		assert.Len(t, lexs, 2)
 	}
+}
+
+func TestExtractSplit(t *testing.T) {
+	in := []byte(`
+package main
+
+{{ SPLIT }}
+
+type {{ Name.PascalCase }} struct {
+	{{ Properties }}
+	{{ Name.PascalCase }} {{ Type }}
+	{{ /Properties }}
+}
+{{ /SPLIT }}
+`)
+
+	expected := []byte(`
+type {{ Name.PascalCase }} struct {
+	{{ Properties }}
+	{{ Name.PascalCase }} {{ Type }}
+	{{ /Properties }}
+}
+`)
+	actual := ExtractSplit(in)
+	assert.Equal(t, string(expected), string(actual))
 }

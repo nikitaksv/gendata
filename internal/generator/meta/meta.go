@@ -17,10 +17,11 @@
 package meta
 
 import (
-	"github.com/nikitaksv/strcase"
 	"math"
 	"sort"
 	"strconv"
+
+	"github.com/nikitaksv/strcase"
 
 	"github.com/nikitaksv/dynjson"
 )
@@ -43,31 +44,24 @@ const (
 type TypeFormatter func(t Type) string
 
 type TypeFormatters struct {
-	Type TypeFormatter `json:"type"`
-	Doc  TypeFormatter `json:"doc"`
+	Type TypeFormatter `json:"-"`
+	Doc  TypeFormatter `json:"-"`
 }
 
-type KeyFormatter func(k Key) string
-
-type KeyFormatters struct {
-	Key KeyFormatter `json:"key"`
-	Doc KeyFormatter `json:"doc"`
-}
-
-type Nest struct {
+type Meta struct {
 	Key        Key         `json:"key"`
 	Type       Type        `json:"type"`
 	Properties []*Property `json:"properties"`
 }
 
-func (n *Nest) Sort() {
+func (n *Meta) Sort() {
 	sort.Slice(n.Properties, func(i, j int) bool { return n.Properties[i].Key < n.Properties[j].Key })
 }
 
 type Property struct {
 	Key  Key   `json:"key"`
 	Type Type  `json:"type"`
-	Nest *Nest `json:"nest"`
+	Nest *Meta `json:"nest"`
 }
 
 type Key string
@@ -102,16 +96,17 @@ func (k Key) DotCase() string {
 }
 
 type Type struct {
-	Key        Key             `json:"key"`
-	Value      string          `json:"value"`
-	Formatters *TypeFormatters `json:"formatters"`
+	Key   Key    `json:"key"`
+	Value string `json:"value"`
+
+	formatters *TypeFormatters
 }
 
 func (t Type) String() string {
-	return t.Formatters.Type(t)
+	return t.formatters.Type(t)
 }
 func (t Type) Doc() string {
-	return t.Formatters.Doc(t)
+	return t.formatters.Doc(t)
 }
 func (t Type) IsNull() bool {
 	return t.Value == TypeNull
@@ -139,7 +134,7 @@ func (t Type) IsObject() bool {
 func TypeOf(key Key, v interface{}, f *TypeFormatters) Type {
 	t := Type{
 		Key:        key,
-		Formatters: f,
+		formatters: f,
 	}
 	switch vType := v.(type) {
 	case *dynjson.Object:
@@ -176,7 +171,7 @@ func TypeOf(key Key, v interface{}, f *TypeFormatters) Type {
 func typeOfArray(key Key, arr []interface{}, f *TypeFormatters) Type {
 	t := Type{
 		Key:        key,
-		Formatters: f,
+		formatters: f,
 	}
 
 	mx := map[string]int{

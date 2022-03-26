@@ -1,0 +1,23 @@
+package main
+
+type RootClass struct {
+	Id int `json:"id"`
+	FirstName string `json:"firstName"`
+	LastName string `json:"lastName"`
+	Email string `json:"email"`
+	Gender string `json:"gender"`
+	IpAddress string `json:"ipAddress"`
+	Addresses []*Addresses `json:"addresses"`
+	Skills []string `json:"skills"`
+}
+type Addresses struct {
+	Name string `json:"name"`
+	City string `json:"city"`
+	Street string `json:"street"`
+	House string `json:"house"`
+	Coordinates *Coordinates `json:"coordinates"`
+}
+type Coordinates struct {
+	Lon float64 `json:"lon"`
+	Lat float64 `json:"lat"`
+}

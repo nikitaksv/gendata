@@ -1,0 +1,24 @@
+{
+  "id": 2,
+  "first_name": "Tam",
+  "last_name": "Le-Good",
+  "email": "tlegood1@so-net.ne.jp",
+  "gender": "Bigender",
+  "ip_address": "2.92.36.184",
+  "addresses": [
+    {
+      "name": "Home",
+      "city": "Test",
+      "street": "Test st.",
+      "house": "1",
+      "coordinates": {
+        "lon": 77.2123124,
+        "lat": 43.2123124
+      }
+    }
+  ],
+  "skills": [
+    "go",
+    "php"
+  ]
+}

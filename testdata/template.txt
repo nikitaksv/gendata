@@ -1,0 +1,9 @@
+package main
+
+{{ SPLIT }}
+type {{ Name.PascalCase }} struct {
+{{ Properties }}
+	{{ Name.PascalCase }} {{ Type.Doc }} `json:"{{ Name.CamelCase }}"`
+{{ /Properties }}
+}
+{{ /SPLIT }}

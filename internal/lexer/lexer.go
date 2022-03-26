@@ -16,7 +16,9 @@
 
 package lexer
 
-import "regexp"
+import (
+	"regexp"
+)
 
 var (
 	LexNameAsIsCase = &Lexer{
@@ -75,6 +77,14 @@ var (
 		Token:   regexp.MustCompile(`(?i){{([\s]+)?/Type.IsObject([\s]+)?}}`),
 		replace: []byte(`{{- end }}`),
 	}
+	LexBeginSplit = &Lexer{
+		Token:   regexp.MustCompile(`(?i){{([\s]+)?SPLIT([\s]+)?}}(\n)?`),
+		replace: []byte(""),
+	}
+	LexEndSplit = &Lexer{
+		Token:   regexp.MustCompile(`(?i){{([\s]+)?/SPLIT([\s]+)?}}(\n)?`),
+		replace: []byte(""),
+	}
 
 	Lexers = []*Lexer{
 		LexNameAsIsCase,
@@ -105,6 +115,10 @@ var (
 			LexBeginTypeIsObject,
 			LexEndTypeIsObject,
 		},
+		{
+			LexBeginSplit,
+			LexEndSplit,
+		},
 	}
 )
 
@@ -114,14 +128,33 @@ type Lexer struct {
 }
 
 func (l Lexer) Replace(in []byte) []byte {
-	return l.Token.ReplaceAllLiteral(in, l.replace)
+	if l.replace != nil {
+		return l.Token.ReplaceAllLiteral(in, l.replace)
+	}
+	return in
 }
-func (l Lexer) Lex(in []byte) [][]byte {
-	var lex [][]byte
-	for _, bs := range l.Token.FindSubmatch(in) {
-		if len(bs) != 0 && string(bs) != " " {
-			lex = append(lex, bs)
+
+func (l Lexer) Lex(in []byte) map[string]int {
+	if loc := l.Token.FindIndex(in); loc != nil {
+		return map[string]int{
+			string(in[loc[0]:loc[1]]): loc[1],
 		}
 	}
-	return lex
+	return map[string]int{}
+}
+
+func ExtractSplit(in []byte) []byte {
+	if len(LexBeginSplit.Lex(in)) == 0 {
+		return in
+	}
+	if len(LexEndSplit.Lex(in)) == 0 {
+		return in
+	}
+	beginSplitIdxs := LexBeginSplit.Token.FindIndex(in)
+	endSplitIdxs := LexEndSplit.Token.FindIndex(in)
+	if len(beginSplitIdxs) != 2 && len(endSplitIdxs) != 2 {
+		return in
+	}
+
+	return in[beginSplitIdxs[1]:endSplitIdxs[0]]
 }

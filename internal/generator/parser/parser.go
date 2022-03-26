@@ -38,5 +38,5 @@ func (o *Options) apply(opts ...Option) error {
 }
 
 type Parser interface {
-	Parse(data []byte) (*meta.Nest, error)
+	Parse(data []byte) (*meta.Meta, error)
 }

@@ -2,13 +2,14 @@ package cmd
 
 import (
 	"context"
+	"io"
+	"os"
+	"strings"
+
 	"github.com/nikitaksv/gendata/internal/service"
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
 	"go.uber.org/zap"
-	"io"
-	"os"
-	"strings"
 )
 
 // genCmd represents the gen command
@@ -17,15 +18,16 @@ var genCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		srv := service.NewService(zap.NewNop())
 		rsp, err := srv.GenFile(context.Background(), &service.GenFileRequest{
-			TmplFile: mustGetString(cmd.Flags(), "template-file"),
-			DataFile: mustGetString(cmd.Flags(), "data-file"),
+			TmplFile:   mustGetString(cmd.Flags(), "tmplFile"),
+			DataFile:   mustGetString(cmd.Flags(), "dataFile"),
+			ConfigFile: mustGetString(cmd.Flags(), "configFile"),
 			Config: &service.Config{
 				Lang:            mustGetString(cmd.Flags(), "lang"),
-				DataFormat:      mustGetString(cmd.Flags(), "data-format"),
-				RootClassName:   mustGetString(cmd.Flags(), "root-class-name"),
-				PrefixClassName: mustGetString(cmd.Flags(), "prefix-class-name"),
-				SuffixClassName: mustGetString(cmd.Flags(), "suffix-class-name"),
-				SortProperties:  mustGetBool(cmd.Flags(), "sort-properties"),
+				DataFormat:      mustGetString(cmd.Flags(), "dataFormat"),
+				RootClassName:   mustGetString(cmd.Flags(), "rootClassName"),
+				PrefixClassName: mustGetString(cmd.Flags(), "prefixClassName"),
+				SuffixClassName: mustGetString(cmd.Flags(), "suffixClassName"),
+				SortProperties:  mustGetBool(cmd.Flags(), "sort"),
 			},
 		})
 		if err != nil {
@@ -52,17 +54,28 @@ var genCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(genCmd)
-	genCmd.Flags().StringP("template-file", "tmplf", "tmpl.txt", "")
-	genCmd.Flags().StringP("data-file", "dataf", "data.json", "")
-	genCmd.Flags().StringP("config-file", "cfgf", "config.json", "")
+	genCmd.Flags().StringP("tmplFile", "t", "tmpl.txt", "")
+	genCmd.Flags().StringP("dataFile", "d", "data.json", "")
+	genCmd.Flags().StringP("configFile", "c", "config.json", "")
 	genCmd.Flags().StringP("out", "o", ".", "")
 	genCmd.Flags().StringP("lang", "l", "", "Programming language, supported: 'go','php'.")
+	genCmd.Flags().StringP("dataFormat", "", "json", "")
+	genCmd.Flags().StringP("rootClassName", "", "RootClass", "")
+	genCmd.Flags().StringP("prefixClassName", "", "", "")
+	genCmd.Flags().StringP("suffixClassName", "", "", "")
+	genCmd.Flags().BoolP("sort", "", false, "Sort object properties")
+
 	if err := genCmd.MarkFlagRequired("lang"); err != nil {
 		panic(err)
 	}
 }
 
+func Execute() {
+	err := genCmd.Execute()
+	if err != nil {
+		os.Exit(1)
+	}
+}
 func mustGetBool(f *flag.FlagSet, name string) bool {
 	v, err := f.GetBool(name)
 	if err != nil {

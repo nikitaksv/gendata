@@ -2,6 +2,7 @@ package parser
 
 import (
 	"encoding/json"
+
 	"github.com/nikitaksv/dynjson"
 	"github.com/nikitaksv/gendata/internal/generator/meta"
 	"github.com/pkg/errors"
@@ -35,7 +36,7 @@ func (p *parserJSON) className(name meta.Key) string {
 	return className
 }
 
-func (p *parserJSON) Parse(data []byte) (*meta.Nest, error) {
+func (p *parserJSON) Parse(data []byte) (*meta.Meta, error) {
 	j := &dynjson.Json{}
 	err := json.Unmarshal(data, j)
 	if err != nil {
@@ -45,7 +46,7 @@ func (p *parserJSON) Parse(data []byte) (*meta.Nest, error) {
 	key := meta.Key(p.className(meta.Key(p.Options.RootClassName)))
 
 	// main object
-	obj := &meta.Nest{
+	obj := &meta.Meta{
 		Key:        key,
 		Type:       meta.TypeOf(key, j.Value, p.Options.TypeFormatters),
 		Properties: nil,
@@ -55,8 +56,11 @@ func (p *parserJSON) Parse(data []byte) (*meta.Nest, error) {
 	case *dynjson.Object:
 		p.parseMap(obj, vType)
 	case *dynjson.Array:
-		if valMap, ok := p.mergeArray(vType).Elements[0].(*dynjson.Object); ok {
-			p.parseMap(obj, valMap)
+		mergedArr := p.mergeArray(vType)
+		if len(mergedArr.Elements) > 0 {
+			if valMap, ok := mergedArr.Elements[0].(*dynjson.Object); ok {
+				p.parseMap(obj, valMap)
+			}
 		}
 	default:
 		return nil, errors.New("undefined type json data: " + vType.(string))
@@ -69,7 +73,7 @@ func (p *parserJSON) Parse(data []byte) (*meta.Nest, error) {
 	return obj, nil
 }
 
-func (p *parserJSON) parseMap(obj *meta.Nest, aMap *dynjson.Object) {
+func (p *parserJSON) parseMap(obj *meta.Meta, aMap *dynjson.Object) {
 	for _, property := range aMap.Properties {
 		prop := &meta.Property{
 			Key:  meta.Key(property.Key),
@@ -83,7 +87,7 @@ func (p *parserJSON) parseMap(obj *meta.Nest, aMap *dynjson.Object) {
 
 		switch vType := property.Value.(type) {
 		case *dynjson.Object:
-			nestedObj := &meta.Nest{
+			nestedObj := &meta.Meta{
 				Key:        prop.Key,
 				Type:       meta.TypeOf(prop.Key, property, p.Options.TypeFormatters),
 				Properties: nil,
@@ -91,14 +95,17 @@ func (p *parserJSON) parseMap(obj *meta.Nest, aMap *dynjson.Object) {
 			p.parseMap(nestedObj, vType)
 			prop.Nest = nestedObj
 		case *dynjson.Array:
-			nestedObj := &meta.Nest{
+			nestedObj := &meta.Meta{
 				Key:        prop.Key,
 				Type:       meta.TypeOf(prop.Key, property.Value, p.Options.TypeFormatters),
 				Properties: nil,
 			}
-			if valMap, ok := p.mergeArray(vType).Elements[0].(*dynjson.Object); ok {
-				p.parseMap(nestedObj, valMap)
-				prop.Nest = nestedObj
+			mergedArr := p.mergeArray(vType)
+			if len(mergedArr.Elements) > 0 {
+				if valMap, ok := mergedArr.Elements[0].(*dynjson.Object); ok {
+					p.parseMap(nestedObj, valMap)
+					prop.Nest = nestedObj
+				}
 			}
 		}
 
@@ -117,8 +124,11 @@ func (p *parserJSON) mergeArray(arr *dynjson.Array) *dynjson.Array {
 		case *dynjson.Object:
 			m = p.mergeMap(vType, m)
 		case *dynjson.Array:
-			if valMap, ok := p.mergeArray(vType).Elements[0].(*dynjson.Object); ok {
-				m = p.mergeMap(valMap, m)
+			mergedArr := p.mergeArray(vType)
+			if len(mergedArr.Elements) > 0 {
+				if valMap, ok := mergedArr.Elements[0].(*dynjson.Object); ok {
+					m = p.mergeMap(valMap, m)
+				}
 			}
 		default:
 			res.Elements = append(res.Elements, v)
@@ -158,9 +168,14 @@ func (p *parserJSON) mergeMap(maps ...*dynjson.Object) *dynjson.Object {
 }
 
 func dynjsonSetProperty(j *dynjson.Object, k string, v interface{}) {
-	for _, property := range j.Properties {
-		if property.Key == k {
-			property.Value = v
+	_, ok := j.GetProperty(k)
+	if len(j.Properties) == 0 || !ok {
+		j.Properties = append(j.Properties, &dynjson.Property{Key: k, Value: v})
+	} else {
+		for _, property := range j.Properties {
+			if property.Key == k {
+				property.Value = v
+			}
 		}
 	}
 }
