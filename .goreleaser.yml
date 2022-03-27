@@ -1,12 +1,17 @@
-# This is an example .goreleaser.yml file with some sensible defaults.
-# Make sure to check the documentation at https://goreleaser.com
 before:
   hooks:
     - go mod tidy
 project_name: gendata
 
-build:
-  skip: true
+builds:
+  - env: [ CGO_ENABLED=0 ]
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
 
 release:
   github:
