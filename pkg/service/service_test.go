@@ -53,7 +53,7 @@ using yii\base\BaseObject;
  * @package common\models
  */
 class {{ Name }} extends BaseObject
-{ 
+{
 {{ Properties }}
 	/**
 	 * @var {{ Type.Doc }}
@@ -159,13 +159,13 @@ using yii\base\BaseObject;
 class TestCoordinatesClass extends BaseObject
 {
 	/**
-	 * @var float64
+	 * @var float
 	 */
-	public float64 $lon;
+	public float $lon;
 	/**
-	 * @var float64
+	 * @var float
 	 */
-	public float64 $lat;
+	public float $lat;
 }
 `)
 	srv := NewService(zap.NewNop())
@@ -344,7 +344,7 @@ func TestService_GenFile(t *testing.T) {
 }
 
 func TestService_PredefinedLangSettings(t *testing.T) {
-	expected := []byte(`{"items":[{"code":"go","name":"GoLang","fileExtension":".go","splitObjectByFiles":false,"configMapping":{"typeMapping":{"array":"[]interface{}","arrayBool":"[]bool","arrayFloat":"[]float64","arrayInt":"[]int","arrayObject":"[]*{{ Name.PascalCase }}","arrayString":"[]string","bool":"bool","float":"float64","int":"int","null":"interface{}","object":"*{{ Name.PascalCase}}","string":"string"},"typeDocMapping":{"array":"[]interface{}","arrayBool":"[]bool","arrayFloat":"[]float64","arrayInt":"[]int","arrayObject":"[]*{{ Name.PascalCase }}","arrayString":"[]string","bool":"bool","float":"float64","int":"int","null":"interface{}","object":"*{{ Name.PascalCase}}","string":"string"},"classNameMapping":"{{ Name.PascalCase }}","fileNameMapping":"{{ Name.CamelCase }}"}},{"code":"php","name":"PHP","fileExtension":".php","splitObjectByFiles":true,"configMapping":{"typeMapping":{"array":"array","arrayBool":"array","arrayFloat":"array","arrayInt":"array","arrayObject":"array","arrayString":"array","bool":"bool","float":"float64","int":"int","null":"null","object":"{{ Name.PascalCase}}","string":"string"},"typeDocMapping":{"array":"array","arrayBool":"bool[]","arrayFloat":"float[]","arrayInt":"int[]","arrayObject":"{{ Name.PascalCase }}[]","arrayString":"string[]","bool":"bool","float":"float64","int":"int","null":"null","object":"{{ Name.PascalCase}}","string":"string"},"classNameMapping":"{{ Name.PascalCase }}","fileNameMapping":"{{ Name.PascalCase }}"}}]}`)
+	expected := []byte(`{"items":[{"code":"go","name":"GoLang","fileExtension":".go","splitObjectByFiles":false,"configMapping":{"typeMapping":{"array":"[]interface{}","arrayBool":"[]bool","arrayFloat":"[]float64","arrayInt":"[]int","arrayObject":"[]*{{ Name.PascalCase }}","arrayString":"[]string","bool":"bool","float":"float64","int":"int","null":"interface{}","object":"*{{ Name.PascalCase}}","string":"string"},"typeDocMapping":{"array":"[]interface{}","arrayBool":"[]bool","arrayFloat":"[]float64","arrayInt":"[]int","arrayObject":"[]*{{ Name.PascalCase }}","arrayString":"[]string","bool":"bool","float":"float64","int":"int","null":"interface{}","object":"*{{ Name.PascalCase}}","string":"string"},"classNameMapping":"{{ Name.PascalCase }}","fileNameMapping":"{{ Name.CamelCase }}"}},{"code":"php","name":"PHP","fileExtension":".php","splitObjectByFiles":true,"configMapping":{"typeMapping":{"array":"array","arrayBool":"array","arrayFloat":"array","arrayInt":"array","arrayObject":"array","arrayString":"array","bool":"bool","float":"float","int":"int","null":"null","object":"{{ Name.PascalCase}}","string":"string"},"typeDocMapping":{"array":"array","arrayBool":"bool[]","arrayFloat":"float[]","arrayInt":"int[]","arrayObject":"{{ Name.PascalCase }}[]","arrayString":"string[]","bool":"bool","float":"float","int":"int","null":"null","object":"{{ Name.PascalCase}}","string":"string"},"classNameMapping":"{{ Name.PascalCase }}","fileNameMapping":"{{ Name.PascalCase }}"}}]}`)
 
 	srv := NewService(zap.NewNop())
 	rsp, err := srv.PredefinedLangSettings(context.Background(), &PredefinedLangSettingsListRequest{})
