@@ -64,7 +64,7 @@ class {{ Name }} extends BaseObject
 `)
 	out := []byte(`TestGenClass.php
 
-&lt;?php
+<?php
 
 namespace common\models;
 
@@ -111,7 +111,7 @@ class TestGenClass extends BaseObject
 }
 TestAddressesClass.php
 
-&lt;?php
+<?php
 
 namespace common\models;
 
@@ -146,7 +146,7 @@ class TestAddressesClass extends BaseObject
 }
 TestCoordinatesClass.php
 
-&lt;?php
+<?php
 
 namespace common\models;
 

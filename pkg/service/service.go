@@ -2,10 +2,10 @@ package service
 
 import (
 	"context"
-	"html/template"
 	"os"
 	"path/filepath"
 	"strings"
+	"text/template"
 	"time"
 
 	"github.com/nikitaksv/gendata/pkg/generator"

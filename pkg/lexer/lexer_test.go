@@ -31,7 +31,7 @@ LexNameAsIsCase -> {{ .Key.String }};{{ .Key.String }}
 LexNameCamelCase -> {{ .Key.CamelCase }};{{ .Key.CamelCase }}
 LexNamePascalCase -> {{ .Key.PascalCase }};{{ .Key.PascalCase }}
 LexNameSnakeCase -> {{ .Key.SnakeCase }};{{ .Key.SnakeCase }}
-LexNameKebabCase -> {{ .Key.CamelCase }};{{ .Key.CamelCase }}
+LexNameKebabCase -> {{ .Key.KebabCase }};{{ .Key.KebabCase }}
 LexNameDotCase -> {{ .Key.DotCase }};{{ .Key.DotCase }}
 
 LexBeginProps -> {{- range .Properties }};{{- range .Properties }}

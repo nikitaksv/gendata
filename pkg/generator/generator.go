@@ -3,8 +3,8 @@ package generator
 import (
 	"bytes"
 	"context"
-	"html/template"
 	"io"
+	"text/template"
 
 	"github.com/nikitaksv/gendata/pkg/generator/meta"
 	"github.com/nikitaksv/gendata/pkg/syntax"

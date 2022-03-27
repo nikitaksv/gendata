@@ -39,7 +39,7 @@ var (
 	}
 	LexNameKebabCase = &Lexer{
 		Token:   regexp.MustCompile(`(?i){{([\s]+)?Name.KebabCase([\s]+)?}}`),
-		replace: []byte(`{{ .Key.CamelCase }}`),
+		replace: []byte(`{{ .Key.KebabCase }}`),
 	}
 	LexNameDotCase = &Lexer{
 		Token:   regexp.MustCompile(`(?i){{([\s]+)?Name.DotCase([\s]+)?}}`),

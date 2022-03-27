@@ -10,6 +10,12 @@
 
 Template Data Generator
 
+## Wiki
+
+[Doc](https://github.com/nikitaksv/gendata/wiki)
+[Syntax](https://github.com/nikitaksv/gendata/wiki/Syntax)
+[Examples](https://github.com/nikitaksv/gendata/wiki/Examples)
+
 ## Installation
 
 Follow those steps to install the library:
