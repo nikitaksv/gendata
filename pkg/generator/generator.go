@@ -6,8 +6,8 @@ import (
 	"html/template"
 	"io"
 
-	"github.com/nikitaksv/gendata/internal/generator/meta"
-	"github.com/nikitaksv/gendata/internal/syntax"
+	"github.com/nikitaksv/gendata/pkg/generator/meta"
+	"github.com/nikitaksv/gendata/pkg/syntax"
 	"github.com/pkg/errors"
 )
 

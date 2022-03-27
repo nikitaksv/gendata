@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -177,7 +178,6 @@ class TestCoordinatesClass extends BaseObject
 			RootClassName:   "Gen",
 			PrefixClassName: "Test",
 			SuffixClassName: "Class",
-			SortProperties:  false,
 		},
 	})
 	assert.NoError(t, err)
@@ -241,12 +241,9 @@ type Coordinates struct {
 		Tmpl: tmpl,
 		Data: data,
 		Config: &Config{
-			Lang:            "go",
-			DataFormat:      "json",
-			RootClassName:   "Gen",
-			PrefixClassName: "",
-			SuffixClassName: "",
-			SortProperties:  false,
+			Lang:          "go",
+			DataFormat:    "json",
+			RootClassName: "Gen",
 		},
 	})
 	assert.NoError(t, err)
@@ -254,6 +251,70 @@ type Coordinates struct {
 		assert.Equal(t, "gen.go", rsp.RenderedFiles[0].FileName)
 		bs, err := io.ReadAll(rsp.RenderedFiles[0].Content)
 		if assert.NoError(t, err) {
+			assert.Equal(t, string(out), string(bs))
+		}
+	}
+}
+
+func TestGen_Sort(t *testing.T) {
+	tmpl := []byte(`
+package main
+
+{{ SPLIT }}
+
+type {{ Name.PascalCase }} struct {
+{{ Properties }}
+	{{ Name.PascalCase }} {{ Type.Doc }} ` + "`json:\"{{ Name.CamelCase }}\"`" + `
+{{ /Properties }}
+}
+{{ /SPLIT }}
+`)
+
+	out := []byte(`
+package main
+
+
+type Gen struct {
+	Addresses []*Addresses ` + "`" + `json:"addresses"` + "`" + `
+	Email string ` + "`" + `json:"email"` + "`" + `
+	FirstName string ` + "`" + `json:"firstName"` + "`" + `
+	Gender string ` + "`" + `json:"gender"` + "`" + `
+	Id int ` + "`" + `json:"id"` + "`" + `
+	IpAddress string ` + "`" + `json:"ipAddress"` + "`" + `
+	LastName string ` + "`" + `json:"lastName"` + "`" + `
+	Skills []string ` + "`" + `json:"skills"` + "`" + `
+}
+
+type Addresses struct {
+	City string ` + "`" + `json:"city"` + "`" + `
+	Coordinates *Coordinates ` + "`" + `json:"coordinates"` + "`" + `
+	House string ` + "`" + `json:"house"` + "`" + `
+	Name string ` + "`" + `json:"name"` + "`" + `
+	Street string ` + "`" + `json:"street"` + "`" + `
+}
+
+type Coordinates struct {
+	Lat float64 ` + "`" + `json:"lat"` + "`" + `
+	Lon float64 ` + "`" + `json:"lon"` + "`" + `
+}
+`)
+	srv := NewService(zap.NewNop())
+	rsp, err := srv.Gen(context.Background(), &GenRequest{
+		Tmpl: tmpl,
+		Data: data,
+		Config: &Config{
+			Lang:           "go",
+			DataFormat:     "json",
+			RootClassName:  "Gen",
+			SortProperties: true,
+		},
+	})
+	assert.NoError(t, err)
+	if assert.NotNil(t, rsp) && assert.NotEmpty(t, rsp.RenderedFiles) && assert.Len(t, rsp.RenderedFiles, 1) {
+		assert.Equal(t, "gen.go", rsp.RenderedFiles[0].FileName)
+		bs, err := io.ReadAll(rsp.RenderedFiles[0].Content)
+		if assert.NoError(t, err) {
+			fmt.Println(string(bs))
 			assert.Equal(t, string(out), string(bs))
 		}
 	}

@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/nikitaksv/gendata/internal/service"
+	"github.com/nikitaksv/gendata/pkg/service"
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
 	"go.uber.org/zap"
