@@ -3,9 +3,8 @@ package syntax
 import (
 	"fmt"
 
+	"github.com/nikitaksv/gendata/pkg/lexer"
 	"github.com/pkg/errors"
-
-	"github.com/nikitaksv/gendata/internal/lexer"
 )
 
 var ErrSyntax = errors.New("syntax error")

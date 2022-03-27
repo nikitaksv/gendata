@@ -96,17 +96,16 @@ func (k Key) DotCase() string {
 }
 
 type Type struct {
-	Key   Key    `json:"key"`
-	Value string `json:"value"`
-
-	formatters *TypeFormatters
+	Key        Key             `json:"key"`
+	Value      string          `json:"value"`
+	Formatters *TypeFormatters `json:"formatters"`
 }
 
 func (t Type) String() string {
-	return t.formatters.Type(t)
+	return t.Formatters.Type(t)
 }
 func (t Type) Doc() string {
-	return t.formatters.Doc(t)
+	return t.Formatters.Doc(t)
 }
 func (t Type) IsNull() bool {
 	return t.Value == TypeNull
@@ -131,19 +130,16 @@ func (t Type) IsObject() bool {
 	return t.Value == TypeObject
 }
 
-func TypeOf(key Key, v interface{}, f *TypeFormatters) Type {
-	t := Type{
-		Key:        key,
-		formatters: f,
-	}
+func TypeOf(key Key, v interface{}) Type {
+	t := Type{Key: key}
 	switch vType := v.(type) {
 	case *dynjson.Object:
 		t.Value = TypeObject
 		return t
 	case *dynjson.Array:
-		return typeOfArray(key, vType.Elements, f)
+		return typeOfArray(key, vType.Elements)
 	case []interface{}:
-		return typeOfArray(key, vType, f)
+		return typeOfArray(key, vType)
 	case map[string]interface{}:
 		t.Value = TypeObject
 		return t
@@ -168,11 +164,8 @@ func TypeOf(key Key, v interface{}, f *TypeFormatters) Type {
 	}
 }
 
-func typeOfArray(key Key, arr []interface{}, f *TypeFormatters) Type {
-	t := Type{
-		Key:        key,
-		formatters: f,
-	}
+func typeOfArray(key Key, arr []interface{}) Type {
+	t := Type{Key: key}
 
 	mx := map[string]int{
 		TypeArrayBool:   0,
@@ -188,11 +181,11 @@ func typeOfArray(key Key, arr []interface{}, f *TypeFormatters) Type {
 		case *dynjson.Object:
 			mx[TypeArrayObject]++
 		case *dynjson.Array:
-			mx[typeOfArray(key, vType.Elements, f).Value]++
+			mx[typeOfArray(key, vType.Elements).Value]++
 		case map[string]interface{}:
 			mx[TypeArrayObject]++
 		case []interface{}:
-			mx[typeOfArray(key, vType, f).Value]++
+			mx[typeOfArray(key, vType).Value]++
 		case int, int8, int16, int32, int64:
 			mx[TypeArrayInt]++
 		case float32, float64:

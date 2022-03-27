@@ -4,51 +4,29 @@ import (
 	"encoding/json"
 
 	"github.com/nikitaksv/dynjson"
-	"github.com/nikitaksv/gendata/internal/generator/meta"
+	"github.com/nikitaksv/gendata/pkg/generator/meta"
 	"github.com/pkg/errors"
 )
 
-type parserJSON struct {
-	Options *Options `json:"options"`
+type parserJSON struct{}
+
+func NewParserJSON() (Parser, error) {
+	return &parserJSON{}, nil
 }
 
-func NewParserJSON(opts ...Option) (Parser, error) {
-	options := &Options{}
-	if err := options.apply(opts...); err != nil {
-		return nil, err
-	}
-	return &parserJSON{
-		Options: options,
-	}, nil
-}
-
-func (p *parserJSON) className(name meta.Key) string {
-	className := ""
-	if p.Options.PrefixClassName != "" {
-		className = p.Options.PrefixClassName + name.PascalCase() + p.Options.SuffixClassName
-	} else {
-		className = name.String() + p.Options.SuffixClassName
-	}
-	if p.Options.ClassNameFormatter != nil {
-		className = p.Options.ClassNameFormatter(meta.Key(className))
-	}
-
-	return className
-}
-
-func (p *parserJSON) Parse(data []byte) (*meta.Meta, error) {
+func (p *parserJSON) Parse(data []byte, _ ...Option) (*meta.Meta, error) {
 	j := &dynjson.Json{}
 	err := json.Unmarshal(data, j)
 	if err != nil {
 		return nil, err
 	}
 
-	key := meta.Key(p.className(meta.Key(p.Options.RootClassName)))
+	key := meta.Key("")
 
 	// main object
 	obj := &meta.Meta{
 		Key:        key,
-		Type:       meta.TypeOf(key, j.Value, p.Options.TypeFormatters),
+		Type:       meta.TypeOf(key, j.Value),
 		Properties: nil,
 	}
 
@@ -66,10 +44,6 @@ func (p *parserJSON) Parse(data []byte) (*meta.Meta, error) {
 		return nil, errors.New("undefined type json data: " + vType.(string))
 	}
 
-	if p.Options.SortProperties {
-		obj.Sort()
-	}
-
 	return obj, nil
 }
 
@@ -77,11 +51,10 @@ func (p *parserJSON) parseMap(obj *meta.Meta, aMap *dynjson.Object) {
 	for _, property := range aMap.Properties {
 		prop := &meta.Property{
 			Key:  meta.Key(property.Key),
-			Type: meta.TypeOf(meta.Key(property.Key), property.Value, p.Options.TypeFormatters),
+			Type: meta.TypeOf(meta.Key(property.Key), property.Value),
 			Nest: nil,
 		}
 		if prop.Type.IsObject() || prop.Type.Value == meta.TypeArrayObject {
-			prop.Key = meta.Key(p.className(prop.Key))
 			prop.Type.Key = prop.Key
 		}
 
@@ -89,7 +62,7 @@ func (p *parserJSON) parseMap(obj *meta.Meta, aMap *dynjson.Object) {
 		case *dynjson.Object:
 			nestedObj := &meta.Meta{
 				Key:        prop.Key,
-				Type:       meta.TypeOf(prop.Key, property, p.Options.TypeFormatters),
+				Type:       meta.TypeOf(prop.Key, property),
 				Properties: nil,
 			}
 			p.parseMap(nestedObj, vType)
@@ -97,7 +70,7 @@ func (p *parserJSON) parseMap(obj *meta.Meta, aMap *dynjson.Object) {
 		case *dynjson.Array:
 			nestedObj := &meta.Meta{
 				Key:        prop.Key,
-				Type:       meta.TypeOf(prop.Key, property.Value, p.Options.TypeFormatters),
+				Type:       meta.TypeOf(prop.Key, property.Value),
 				Properties: nil,
 			}
 			mergedArr := p.mergeArray(vType)
@@ -110,9 +83,6 @@ func (p *parserJSON) parseMap(obj *meta.Meta, aMap *dynjson.Object) {
 		}
 
 		obj.Properties = append(obj.Properties, prop)
-	}
-	if p.Options.SortProperties {
-		obj.Sort()
 	}
 }
 
@@ -152,13 +122,13 @@ func (p *parserJSON) mergeMap(maps ...*dynjson.Object) *dynjson.Object {
 			case *dynjson.Array:
 				dynjsonSetProperty(result, property.Key, p.mergeArray(vType))
 			case *dynjson.Object:
-				if exists && meta.TypeOf(meta.Key(property.Key), existsProp.Value, p.Options.TypeFormatters).IsObject() {
+				if exists && meta.TypeOf(meta.Key(property.Key), existsProp.Value).IsObject() {
 					dynjsonSetProperty(result, property.Key, p.mergeMap(vType, existsProp.Value.(*dynjson.Object)))
 				} else {
 					dynjsonSetProperty(result, property.Key, property.Value)
 				}
 			default:
-				if !exists || !meta.TypeOf(meta.Key(property.Key), property, p.Options.TypeFormatters).IsNull() {
+				if !exists || !meta.TypeOf(meta.Key(property.Key), property).IsNull() {
 					dynjsonSetProperty(result, property.Key, property.Value)
 				}
 			}

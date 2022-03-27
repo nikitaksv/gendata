@@ -8,10 +8,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/nikitaksv/gendata/internal/generator"
-	"github.com/nikitaksv/gendata/internal/generator/meta"
-	"github.com/nikitaksv/gendata/internal/generator/parser"
-	"github.com/nikitaksv/gendata/internal/syntax"
+	"github.com/nikitaksv/gendata/pkg/generator"
+	"github.com/nikitaksv/gendata/pkg/generator/formatter"
+	"github.com/nikitaksv/gendata/pkg/generator/meta"
+	parser2 "github.com/nikitaksv/gendata/pkg/generator/parser"
+	"github.com/nikitaksv/gendata/pkg/syntax"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -62,6 +63,9 @@ type Service interface {
 }
 
 func NewService(log *zap.Logger) Service {
+	if log == nil {
+		log = zap.NewNop()
+	}
 	return &service{log: log}
 }
 
@@ -86,6 +90,8 @@ func (s *service) PredefinedLangSettings(_ context.Context, request *PredefinedL
 
 func (s *service) Gen(ctx context.Context, request *GenRequest) (*GenResponse, error) {
 	beginTs := time.Now()
+	s.log.Debug("Gen: request log", zap.Any("request", request))
+
 	if len(request.Tmpl) == 0 {
 		return nil, errors.New("template is empty")
 	}
@@ -122,31 +128,36 @@ func (s *service) Gen(ctx context.Context, request *GenRequest) (*GenResponse, e
 		langSettings.ConfigMapping.TypeDocMapping = langSettings.ConfigMapping.TypeMapping
 	}
 
-	var parser_ parser.Parser
+	var parser_ parser2.Parser
 	if request.Config.DataFormat == "json" {
 		var err error
-		parser_, err = parser.NewParserJSON(
-			parser.WithOptions(&parser.Options{
-				RootClassName:   request.Config.RootClassName,
-				PrefixClassName: request.Config.PrefixClassName,
-				SuffixClassName: request.Config.SuffixClassName,
-				SortProperties:  request.Config.SortProperties,
-				TypeFormatters: &meta.TypeFormatters{
-					Type: langSettings.ConfigMapping.TypeMapping.TypeFormatters(),
-					Doc:  langSettings.ConfigMapping.TypeDocMapping.TypeFormatters(),
-				},
-				ClassNameFormatter: langSettings.ConfigMapping.ClassNameFormatter(),
-			}))
+		parser_, err = parser2.NewParserJSON()
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		return nil, errors.New("config.data_content_type is unknown, only is `json` supported")
+		return nil, errors.New("config.dataFormat is unknown, only is `json` supported")
 	}
 
 	m, err := parser_.Parse(request.Data)
 	if err != nil {
 		return nil, err
+	}
+
+	format := formatter.NewFormatter()
+	m, err = format.Format(m, formatter.WithOptions(&formatter.Options{
+		RootClassName:   request.Config.RootClassName,
+		PrefixClassName: request.Config.PrefixClassName,
+		SuffixClassName: request.Config.SuffixClassName,
+		SortProperties:  request.Config.SortProperties,
+		TypeFormatters: &meta.TypeFormatters{
+			Type: langSettings.ConfigMapping.TypeMapping.TypeFormatters(),
+			Doc:  langSettings.ConfigMapping.TypeDocMapping.TypeFormatters(),
+		},
+		ClassNameFormatter: langSettings.ConfigMapping.ClassNameFormatter(),
+	}))
+	if err != nil {
+		return nil, errors.WithMessage(err, "formatter error")
 	}
 
 	gen := generator.NewGenerator()
@@ -165,6 +176,8 @@ func (s *service) Gen(ctx context.Context, request *GenRequest) (*GenResponse, e
 }
 
 func (s *service) GenFile(ctx context.Context, request *GenFileRequest) (*GenResponse, error) {
+	s.log.Debug("GenFile: request log", zap.Any("request", request))
+
 	if request.TmplFile == "" {
 		return nil, errors.New("template file is empty")
 	}
@@ -282,7 +295,7 @@ type ConfigMapping struct {
 	FileNameMapping  string       `json:"fileNameMapping"`
 }
 
-func (m ConfigMapping) ClassNameFormatter() parser.ClassNameFormatter {
+func (m ConfigMapping) ClassNameFormatter() formatter.ClassNameFormatter {
 	return func(key meta.Key) string {
 		bs, err := syntax.Parse([]byte(m.ClassNameMapping))
 		if err != nil {
