@@ -352,3 +352,46 @@ func TestService_PredefinedLangSettings(t *testing.T) {
 		assert.JSONEq(t, string(expected), string(bs))
 	}
 }
+
+func TestNewService(t *testing.T) {
+	srv := NewService(nil)
+	assert.NotNil(t, srv)
+	srv = NewService(zap.NewNop())
+	assert.NotNil(t, srv)
+}
+
+func TestService_Gen(t *testing.T) {
+	t.Run("Empty req", func(t *testing.T) {
+		req := &GenRequest{}
+		_, err := NewService(nil).Gen(context.Background(), req)
+		assert.Error(t, err)
+	})
+	t.Run("Empty req lang config", func(t *testing.T) {
+		req := &GenRequest{
+			Config: &Config{
+				LangSettings: nil,
+			},
+			Tmpl: []byte(`1`),
+			Data: []byte(`1`),
+		}
+		_, err := NewService(nil).Gen(context.Background(), req)
+		assert.Error(t, err)
+	})
+	t.Run("Empty req lang configMap", func(t *testing.T) {
+		req := &GenRequest{
+			Config: &Config{
+				LangSettings: &LangSettings{
+					ConfigMapping:      nil,
+					Code:               "test",
+					Name:               "Test",
+					FileExtension:      ".test",
+					SplitObjectByFiles: false,
+				},
+			},
+			Tmpl: []byte(`1`),
+			Data: []byte(`1`),
+		}
+		_, err := NewService(nil).Gen(context.Background(), req)
+		assert.Error(t, err)
+	})
+}

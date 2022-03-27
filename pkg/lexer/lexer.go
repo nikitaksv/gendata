@@ -18,6 +18,7 @@ package lexer
 
 import (
 	"regexp"
+	"strings"
 )
 
 var (
@@ -134,13 +135,15 @@ func (l Lexer) Replace(in []byte) []byte {
 	return in
 }
 
-func (l Lexer) Lex(in []byte) map[string]int {
-	if loc := l.Token.FindIndex(in); loc != nil {
-		return map[string]int{
-			string(in[loc[0]:loc[1]]): loc[1],
+func (l Lexer) Lex(in []byte) map[int]string {
+	m := map[int]string{}
+	if locs := l.Token.FindAllIndex(in, -1); locs != nil {
+		for _, loc := range locs {
+			token := strings.TrimSpace(string(in[loc[0]:loc[1]]))
+			m[loc[1]] = token
 		}
 	}
-	return map[string]int{}
+	return m
 }
 
 func ExtractSplit(in []byte) []byte {

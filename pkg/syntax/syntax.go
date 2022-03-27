@@ -22,23 +22,24 @@ func Validate(in []byte) error {
 	}
 
 	startSplitLex := lexer.LexBeginSplit.Lex(in)
-	if len(startSplitLex) > 1 {
-		return errors.Wrapf(ErrSyntax, "have only one '%s' tag", printLex(startSplitLex))
-	}
 	endSplitLex := lexer.LexEndSplit.Lex(in)
-	if len(endSplitLex) > 1 {
-		return errors.Wrapf(ErrSyntax, "have only one '%s' tag", printLex(endSplitLex))
+	if len(startSplitLex) > 1 || len(endSplitLex) > 1 {
+		tag := printLex(startSplitLex)
+		if tag == "" {
+			tag = printLex(endSplitLex)
+		}
+		return errors.Wrapf(ErrSyntax, "have only one '%s' tag", tag)
 	}
 
 	return nil
 }
 
 func Parse(in []byte) ([]byte, error) {
-	for _, l := range lexer.Lexers {
-		in = l.Replace(in)
-	}
 	if err := Validate(in); err != nil {
 		return nil, err
+	}
+	for _, l := range lexer.Lexers {
+		in = l.Replace(in)
 	}
 
 	return in, nil
@@ -55,14 +56,18 @@ func ParseWithSplit(in []byte) ([]byte, []byte, error) {
 	return in, splitted, nil
 }
 
-func printLex(lex map[string]int) string {
+func printLex(lex map[int]string) string {
 	token := ""
 	maxIdx := 0
-	for t, i := range lex {
+	for i, t := range lex {
 		if maxIdx == 0 || i >= maxIdx {
 			token = t
 			maxIdx = i
 		}
+	}
+
+	if token == "" {
+		return ""
 	}
 
 	return fmt.Sprintf("%s:%d", token, maxIdx)

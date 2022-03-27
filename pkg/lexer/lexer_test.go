@@ -73,7 +73,7 @@ func TestLexer_Lex(t *testing.T) {
 	for _, lexers := range StartEndLexers {
 		var lexs []string
 		for _, lex := range lexers {
-			for token := range lex.Lex(in) {
+			for _, token := range lex.Lex(in) {
 				lexs = append(lexs, token)
 			}
 		}
