@@ -5,8 +5,8 @@ import "testing"
 func TestValidate(t *testing.T) {
 	tests := []struct {
 		name    string
-		wantErr bool
 		in      []byte
+		wantErr bool
 	}{
 		{
 			name:    "valid Properties",

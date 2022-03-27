@@ -25,10 +25,10 @@ func WithOptions(opts *Options) Option {
 }
 
 type Options struct {
+	FileNameFormatter FileNameFormatter
+	FileExtension     string
 	// Split nested object by separate template file
 	SplitObjectsByFiles bool
-	FileExtension       string
-	FileNameFormatter   FileNameFormatter
 }
 
 func (o *Options) apply(opts ...Option) error {
@@ -45,8 +45,8 @@ type Generator interface {
 }
 
 type RenderedFile struct {
-	FileName string
 	Content  io.ReadWriter
+	FileName string
 }
 
 type generator struct {

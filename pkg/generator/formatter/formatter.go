@@ -21,12 +21,12 @@ func WithOptions(opts *Options) Option {
 }
 
 type Options struct {
+	TypeFormatters     *meta.TypeFormatters `json:"typeFormatters"`
+	ClassNameFormatter ClassNameFormatter   `json:"classNameFormatter"`
 	RootClassName      string               `json:"rootClassName"`
 	PrefixClassName    string               `json:"prefixClassName"`
 	SuffixClassName    string               `json:"suffixClassName"`
 	SortProperties     bool                 `json:"sortProperties"`
-	TypeFormatters     *meta.TypeFormatters `json:"typeFormatters"`
-	ClassNameFormatter ClassNameFormatter   `json:"classNameFormatter"`
 }
 
 func (o *Options) apply(opts ...Option) error {

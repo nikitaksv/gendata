@@ -27,18 +27,18 @@ import (
 )
 
 const (
-	TypeNull        string = "null"
-	TypeInt                = "int"
-	TypeString             = "string"
-	TypeBool               = "bool"
-	TypeFloat              = "float"
-	TypeObject             = "object"
-	TypeArray              = "array"
-	TypeArrayObject        = "arrayObject"
-	TypeArrayInt           = "arrayInt"
-	TypeArrayString        = "arrayString"
-	TypeArrayBool          = "arrayBool"
-	TypeArrayFloat         = "arrayFloat"
+	TypeNull        = "null"
+	TypeInt         = "int"
+	TypeString      = "string"
+	TypeBool        = "bool"
+	TypeFloat       = "float"
+	TypeObject      = "object"
+	TypeArray       = "array"
+	TypeArrayObject = "arrayObject"
+	TypeArrayInt    = "arrayInt"
+	TypeArrayString = "arrayString"
+	TypeArrayBool   = "arrayBool"
+	TypeArrayFloat  = "arrayFloat"
 )
 
 type TypeFormatter func(t Type) string
@@ -59,9 +59,9 @@ func (n *Meta) Sort() {
 }
 
 type Property struct {
+	Nest *Meta `json:"nest"`
 	Key  Key   `json:"key"`
 	Type Type  `json:"type"`
-	Nest *Meta `json:"nest"`
 }
 
 type Key string
@@ -96,9 +96,10 @@ func (k Key) DotCase() string {
 }
 
 type Type struct {
-	Key        Key             `json:"key"`
-	Value      string          `json:"value"`
 	Formatters *TypeFormatters `json:"formatters"`
+
+	Key   Key    `json:"key"`
+	Value string `json:"value"`
 }
 
 func (t Type) String() string {
@@ -164,6 +165,7 @@ func TypeOf(key Key, v interface{}) Type {
 	}
 }
 
+//nolint:gocyclo
 func typeOfArray(key Key, arr []interface{}) Type {
 	t := Type{Key: key}
 

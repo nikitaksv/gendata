@@ -1,0 +1,24 @@
+name: golangci-lint
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+
+jobs:
+  golangci:
+    strategy:
+      matrix:
+        go-version: [ 1.17.x ]
+        os: [ ubuntu-latest ]
+    name: lint
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v2
+        with:
+          version: latest
+          skip-build-cache: true
+          skip-pkg-cache: true

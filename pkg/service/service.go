@@ -18,16 +18,16 @@ import (
 )
 
 type GenRequest struct {
+	Config *Config `json:"config"`
 	Tmpl   []byte  `json:"tmpl"`
 	Data   []byte  `json:"data"`
-	Config *Config `json:"config"`
 }
 
 type GenFileRequest struct {
+	Config     *Config `json:"config"`
 	TmplFile   string  `json:"tmplFile"`
 	DataFile   string  `json:"dataFile"`
 	ConfigFile string  `json:"configFile"`
-	Config     *Config `json:"config"`
 }
 
 type PredefinedLangSettingsListRequest struct {
@@ -45,8 +45,8 @@ type GenResponse struct {
 }
 
 type Config struct {
-	Lang         string        `json:"lang"`
 	LangSettings *LangSettings `json:"langSettings,omitempty"`
+	Lang         string        `json:"lang"`
 	DataFormat   string        `json:"dataFormat"`
 	// Root object name
 	RootClassName   string `json:"rootClassName"`
@@ -88,6 +88,7 @@ func (s *service) PredefinedLangSettings(_ context.Context, request *PredefinedL
 	}, nil
 }
 
+//nolint:gocyclo
 func (s *service) Gen(ctx context.Context, request *GenRequest) (*GenResponse, error) {
 	beginTs := time.Now()
 	s.log.Debug("Gen: request log", zap.Any("request", request))
@@ -100,13 +101,14 @@ func (s *service) Gen(ctx context.Context, request *GenRequest) (*GenResponse, e
 	}
 
 	var langSettings LangSettings
-	if request.Config.Lang != "" {
+	switch {
+	case request.Config.Lang != "":
 		prefLangSettings, ok := getPredefinedLangSettings(request.Config.Lang)
 		if !ok {
 			return nil, errors.Errorf("config.lang \"%s\" not supported", request.Config.Lang)
 		}
 		langSettings = prefLangSettings
-	} else if request.Config.LangSettings != nil {
+	case request.Config.LangSettings != nil:
 		if request.Config.LangSettings.ConfigMapping == nil {
 			return nil, errors.New("config.langSettings.configMapping is empty")
 		}
@@ -114,7 +116,7 @@ func (s *service) Gen(ctx context.Context, request *GenRequest) (*GenResponse, e
 			return nil, errors.New("config.langSettings.configMapping.typeMapping is empty")
 		}
 		langSettings = *request.Config.LangSettings
-	} else {
+	default:
 		return nil, errors.Errorf("config.lang and config.langSettings is empty")
 	}
 	if request.Config.DataFormat == "" {
@@ -215,11 +217,11 @@ func (s *service) GenFile(ctx context.Context, request *GenFileRequest) (*GenRes
 }
 
 type LangSettings struct {
+	ConfigMapping      *ConfigMapping `json:"configMapping"`
 	Code               string         `json:"code"`
 	Name               string         `json:"name"`
 	FileExtension      string         `json:"fileExtension"`
 	SplitObjectByFiles bool           `json:"splitObjectByFiles"`
-	ConfigMapping      *ConfigMapping `json:"configMapping"`
 }
 
 var PredefinedLangSettings = []*LangSettings{
