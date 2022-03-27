@@ -3,7 +3,7 @@
 [![Godoc Reference](https://godoc.org/github.com/nikitaksv/gendata?status.svg)](http://godoc.org/github.com/nikitaksv/gendata)
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/nikitaksv/gendata)
 ![GitHub Workflow Status](https://img.shields.io/github/workflow/status/nikitaksv/gendata/release)
-[![codecov](https://codecov.io/gh/nikitaksv/gendata/branch/main/graph/badge.svg?token=7InxmTDBcB)](https://codecov.io/gh/nikitaksv/gendata)
+[![codecov](https://codecov.io/gh/nikitaksv/gendata/branch/main/graph/badge.svg?token=TDDP71X62E)](https://codecov.io/gh/nikitaksv/gendata)
 ![License](https://img.shields.io/github/license/nikitaksv/gendata)
 
 ---
