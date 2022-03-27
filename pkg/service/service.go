@@ -2,9 +2,9 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"html/template"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -14,6 +14,7 @@ import (
 	parser2 "github.com/nikitaksv/gendata/pkg/generator/parser"
 	"github.com/nikitaksv/gendata/pkg/syntax"
 	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 	"go.uber.org/zap"
 )
 
@@ -45,15 +46,15 @@ type GenResponse struct {
 }
 
 type Config struct {
-	LangSettings *LangSettings `json:"langSettings,omitempty"`
-	Lang         string        `json:"lang"`
-	DataFormat   string        `json:"dataFormat"`
+	LangSettings *LangSettings `json:"langSettings,omitempty" xml:"LangSettings" yaml:"langSettings"`
+	Lang         string        `json:"lang" xml:"Lang" yaml:"lang"`
+	DataFormat   string        `json:"dataFormat" xml:"DataFormat" yaml:"dataFormat"`
 	// Root object name
-	RootClassName   string `json:"rootClassName"`
-	PrefixClassName string `json:"prefixClassName"`
-	SuffixClassName string `json:"suffixClassName"`
+	RootClassName   string `json:"rootClassName" xml:"RootClassName" yaml:"rootClassName"`
+	PrefixClassName string `json:"prefixClassName" xml:"PrefixClassName" yaml:"prefixClassName"`
+	SuffixClassName string `json:"suffixClassName" xml:"SuffixClassName" yaml:"suffixClassName"`
 	// Sort object properties
-	SortProperties bool `json:"sortProperties"`
+	SortProperties bool `json:"sortProperties" xml:"SortProperties" yaml:"sortProperties"`
 }
 
 type Service interface {
@@ -199,14 +200,18 @@ func (s *service) GenFile(ctx context.Context, request *GenFileRequest) (*GenRes
 		return nil, err
 	}
 	if request.ConfigFile != "" {
-		cfgBs, err := os.ReadFile(request.ConfigFile)
-		if err != nil {
-			return nil, err
+		v := viper.New()
+		v.SetConfigFile(request.ConfigFile)
+		if err := v.ReadInConfig(); err != nil {
+			return nil, errors.Wrap(err, "read config file error")
 		}
 		request.Config = &Config{}
-		if err := json.Unmarshal(cfgBs, request.Config); err != nil {
+		if err := v.Unmarshal(request.Config); err != nil {
 			return nil, errors.Wrap(err, "incorrect config file")
 		}
+	}
+	if request.Config.DataFormat == "" {
+		request.Config.DataFormat = strings.TrimPrefix(filepath.Ext(request.DataFile), ".")
 	}
 
 	return s.Gen(ctx, &GenRequest{
@@ -217,11 +222,11 @@ func (s *service) GenFile(ctx context.Context, request *GenFileRequest) (*GenRes
 }
 
 type LangSettings struct {
-	ConfigMapping      *ConfigMapping `json:"configMapping"`
-	Code               string         `json:"code"`
-	Name               string         `json:"name"`
-	FileExtension      string         `json:"fileExtension"`
-	SplitObjectByFiles bool           `json:"splitObjectByFiles"`
+	ConfigMapping      *ConfigMapping `json:"configMapping"  yaml:"configMapping" xml:"ConfigMapping"`
+	Code               string         `json:"code" yaml:"code" xml:"Code"`
+	Name               string         `json:"name" yaml:"name" xml:"Name"`
+	FileExtension      string         `json:"fileExtension" yaml:"fileExtension" xml:"FileExtension"`
+	SplitObjectByFiles bool           `json:"splitObjectByFiles" yaml:"splitObjectByFiles" xml:"SplitObjectByFiles"`
 }
 
 var PredefinedLangSettings = []*LangSettings{
@@ -291,10 +296,10 @@ var PredefinedLangSettings = []*LangSettings{
 }
 
 type ConfigMapping struct {
-	TypeMapping      *TypeMapping `json:"typeMapping"`
-	TypeDocMapping   *TypeMapping `json:"typeDocMapping"`
-	ClassNameMapping string       `json:"classNameMapping"`
-	FileNameMapping  string       `json:"fileNameMapping"`
+	TypeMapping      *TypeMapping `json:"typeMapping" xml:"TypeMapping" yaml:"typeMapping"`
+	TypeDocMapping   *TypeMapping `json:"typeDocMapping" xml:"TypeDocMapping" yaml:"typeDocMapping"`
+	ClassNameMapping string       `json:"classNameMapping" xml:"ClassNameMapping" yaml:"classNameMapping"`
+	FileNameMapping  string       `json:"fileNameMapping" xml:"FileNameMapping" yaml:"fileNameMapping"`
 }
 
 func (m ConfigMapping) ClassNameFormatter() formatter.ClassNameFormatter {
@@ -338,18 +343,18 @@ func (m ConfigMapping) FileNameFormatter() generator.FileNameFormatter {
 }
 
 type TypeMapping struct {
-	Array       string `json:"array"`
-	ArrayBool   string `json:"arrayBool"`
-	ArrayFloat  string `json:"arrayFloat"`
-	ArrayInt    string `json:"arrayInt"`
-	ArrayObject string `json:"arrayObject"`
-	ArrayString string `json:"arrayString"`
-	Bool        string `json:"bool"`
-	Float       string `json:"float"`
-	Int         string `json:"int"`
-	Null        string `json:"null"`
-	Object      string `json:"object"`
-	String      string `json:"string"`
+	Array       string `json:"array" yaml:"array" xml:"Array"`
+	ArrayBool   string `json:"arrayBool" yaml:"arrayBool" xml:"ArrayBool"`
+	ArrayFloat  string `json:"arrayFloat" yaml:"arrayFloat" xml:"ArrayFloat"`
+	ArrayInt    string `json:"arrayInt" yaml:"arrayInt" xml:"ArrayInt"`
+	ArrayObject string `json:"arrayObject" yaml:"arrayObject" xml:"ArrayObject"`
+	ArrayString string `json:"arrayString" yaml:"arrayString" xml:"ArrayString"`
+	Bool        string `json:"bool" yaml:"bool" xml:"Bool"`
+	Float       string `json:"float" yaml:"float" xml:"Float"`
+	Int         string `json:"int" yaml:"int" xml:"Int"`
+	Null        string `json:"null" yaml:"null" xml:"Null"`
+	Object      string `json:"object" yaml:"object" xml:"Object"`
+	String      string `json:"string" yaml:"string" xml:"String"`
 }
 
 func (m TypeMapping) GetType(key string) (string, error) {

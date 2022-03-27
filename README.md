@@ -20,9 +20,22 @@ Follow those steps to install the library:
 go get github.com/nikitaksv/gendata
 ```
 
+or install cli tool
+
+```shell
+go install github.com/nikitaksv/gendata
+```
+
 ## Usage
 
-Example PHP Class generator from JSON data:
+### CLI
+
+```shell
+gendata gen -l go -t testdata/template.txt -d testdata/data.json -o testdata/
+```
+
+### Code example PHP Class generator from JSON data:
+
 ```go
 package main
 
@@ -48,7 +61,7 @@ using yii\base\BaseObject;
  * @package common\models
  */
 class {{ Name }} extends BaseObject
-{ 
+{
 {{ Properties }}
 	/**
 	 * @var {{ Type.Doc }}
@@ -89,9 +102,9 @@ class {{ Name }} extends BaseObject
 		Tmpl: tmpl,
 		Data: data,
 		Config: &gendata.Config{
-			Lang:            "php",
-			DataFormat:      "json",
-			RootClassName:   "Gen",
+			Lang:          "php",
+			DataFormat:    "json",
+			RootClassName: "Gen",
 		},
 	})
 	if err != nil {
@@ -106,6 +119,3 @@ class {{ Name }} extends BaseObject
 	}
 }
 ```
-
-
-

@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"io"
+	"log"
 	"os"
 	"strings"
 
@@ -54,19 +55,25 @@ var genCmd = &cobra.Command{
 }
 
 func init() {
-	genCmd.Flags().StringP("tmplFile", "t", "tmpl.txt", "")
-	genCmd.Flags().StringP("dataFile", "d", "data.json", "")
-	genCmd.Flags().StringP("configFile", "c", "config.json", "")
-	genCmd.Flags().StringP("out", "o", ".", "")
+	genCmd.Flags().StringP("tmplFile", "t", "", "Path to template file")
+	genCmd.Flags().StringP("dataFile", "d", "", "Path to data file")
+	genCmd.Flags().StringP("configFile", "c", "", "Path to config.[json,xml,yaml,yml] file")
+	genCmd.Flags().StringP("out", "o", ".", "Path to output files directory")
 	genCmd.Flags().StringP("lang", "l", "", "Programming language, supported: 'go','php'.")
-	genCmd.Flags().StringP("dataFormat", "", "json", "")
-	genCmd.Flags().StringP("rootClassName", "", "RootClass", "")
-	genCmd.Flags().StringP("prefixClassName", "", "", "")
-	genCmd.Flags().StringP("suffixClassName", "", "", "")
-	genCmd.Flags().BoolP("sort", "", false, "Sort object properties")
+	genCmd.Flags().StringP("dataFormat", "", "", "Set manual data format [json] or auto-detect by file extension!")
+	genCmd.Flags().StringP("rootClassName", "", "RootClass", "Name for root (first) object in data")
+	genCmd.Flags().StringP("prefixClassName", "", "", "Prefix name class")
+	genCmd.Flags().StringP("suffixClassName", "", "", "Suffix name class")
+	genCmd.Flags().BoolP("sort", "", false, "Sort data objects properties")
 
 	if err := genCmd.MarkFlagRequired("lang"); err != nil {
-		panic(err)
+		log.Fatal(err)
+	}
+	if err := genCmd.MarkFlagRequired("tmplFile"); err != nil {
+		log.Fatal(err)
+	}
+	if err := genCmd.MarkFlagRequired("dataFile"); err != nil {
+		log.Fatal(err)
 	}
 }
 

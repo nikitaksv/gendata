@@ -323,13 +323,9 @@ type Coordinates struct {
 func TestService_GenFile(t *testing.T) {
 	srv := NewService(zap.NewNop())
 	rsp, err := srv.GenFile(context.Background(), &GenFileRequest{
-		TmplFile: "../../testdata/template.txt",
-		DataFile: "../../testdata/data.json",
-		Config: &Config{
-			Lang:          "go",
-			DataFormat:    "json",
-			RootClassName: "RootClass",
-		},
+		TmplFile:   "../../testdata/template.txt",
+		DataFile:   "../../testdata/data.json",
+		ConfigFile: "../../testdata/cfg.yaml",
 	})
 	assert.NoError(t, err)
 	if assert.NotEmpty(t, rsp.RenderedFiles) && assert.Len(t, rsp.RenderedFiles, 1) {
