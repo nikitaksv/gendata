@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/nikitaksv/dynjson"
-	"github.com/nikitaksv/gendata/pkg/generator/meta"
+	"github.com/nikitaksv/gendata/pkg/meta"
 	"github.com/pkg/errors"
 )
 

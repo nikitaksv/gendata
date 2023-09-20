@@ -20,9 +20,11 @@ import (
 	"math"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/nikitaksv/strcase"
 
+	"github.com/araddon/dateparse"
 	"github.com/nikitaksv/dynjson"
 )
 
@@ -33,6 +35,10 @@ const (
 	TypeBool        = "bool"
 	TypeFloat       = "float"
 	TypeObject      = "object"
+	TypeDate        = "date"
+	TypeTime        = "time"
+	TypeDateTime    = TypeDate + TypeTime
+	TypeDuration    = "duration"
 	TypeArray       = "array"
 	TypeArrayObject = "arrayObject"
 	TypeArrayInt    = "arrayInt"
@@ -44,24 +50,46 @@ const (
 type TypeFormatter func(t Type) string
 
 type TypeFormatters struct {
-	Type TypeFormatter `json:"-"`
-	Doc  TypeFormatter `json:"-"`
+	Type TypeFormatter
+	Doc  TypeFormatter
 }
 
 type Meta struct {
-	Key        Key         `json:"key"`
-	Type       Type        `json:"type"`
-	Properties []*Property `json:"properties"`
+	Key        Key
+	Type       Type
+	Properties []*Property
 }
 
-func (n *Meta) Sort() {
-	sort.Slice(n.Properties, func(i, j int) bool { return n.Properties[i].Key < n.Properties[j].Key })
+func (m *Meta) Sort() {
+	sort.Slice(m.Properties, func(i, j int) bool { return m.Properties[i].Key < m.Properties[j].Key })
+}
+
+func (m *Meta) Clone() *Meta {
+	if m == nil {
+		return nil
+	}
+
+	nm := &Meta{
+		Key:        m.Key,
+		Type:       m.Type,
+		Properties: make([]*Property, len(m.Properties)),
+	}
+
+	for i, property := range m.Properties {
+		nm.Properties[i] = &Property{
+			Nest: property.Nest.Clone(),
+			Key:  property.Key,
+			Type: property.Type,
+		}
+	}
+
+	return nm
 }
 
 type Property struct {
-	Nest *Meta `json:"nest"`
-	Key  Key   `json:"key"`
-	Type Type  `json:"type"`
+	Nest *Meta
+	Key  Key
+	Type Type
 }
 
 type Key string
@@ -75,9 +103,19 @@ func (k Key) CamelCase() string {
 	return strcase.ToCamelCase(k.String())
 }
 
+// CamelCaseAcronym ex. camelCaseID
+func (k Key) CamelCaseAcronym() string {
+	return strcase.ToCamelCaseAcronym(k.String())
+}
+
 // PascalCase ex. PascalCase
 func (k Key) PascalCase() string {
 	return strcase.ToPascalCase(k.String())
+}
+
+// PascalCaseAcronym ex. PascalCaseID
+func (k Key) PascalCaseAcronym() string {
+	return strcase.ToPascalCaseAcronym(k.String())
 }
 
 // SnakeCase ex. snake_case
@@ -85,14 +123,39 @@ func (k Key) SnakeCase() string {
 	return strcase.ToSnakeCase(k.String())
 }
 
+// SnakeCaseAcronym ex. snake_case_ID
+func (k Key) SnakeCaseAcronym() string {
+	return strcase.ToSnakeCaseAcronym(k.String())
+}
+
 // KebabCase ex. kebab-case
 func (k Key) KebabCase() string {
 	return strcase.ToKebabCase(k.String())
 }
 
+// KebabCaseAcronym ex. kebab-case-ID
+func (k Key) KebabCaseAcronym() string {
+	return strcase.ToKebabCaseAcronym(k.String())
+}
+
 // DotCase ex. dot.case
 func (k Key) DotCase() string {
 	return strcase.ToDotCase(k.String())
+}
+
+// DotCaseAcronym ex. dot.case.ID
+func (k Key) DotCaseAcronym() string {
+	return strcase.ToDotCaseAcronym(k.String())
+}
+
+// MergeCase ex. mergecase
+func (k Key) MergeCase() string {
+	return strcase.ToMergeCase(k.String())
+}
+
+// MergeCaseAcronym ex. mergecaseID
+func (k Key) MergeCaseAcronym() string {
+	return strcase.ToMergeCaseAcronym(k.String())
 }
 
 type Type struct {
@@ -127,8 +190,23 @@ func (t Type) IsArray() bool {
 	return t.Value == TypeArray || t.Value == TypeArrayObject || t.Value == TypeArrayFloat ||
 		t.Value == TypeArrayBool || t.Value == TypeArrayString || t.Value == TypeArrayInt
 }
+func (t Type) IsArrayObject() bool {
+	return t.Value == TypeArrayObject
+}
 func (t Type) IsObject() bool {
 	return t.Value == TypeObject
+}
+func (t Type) IsTime() bool {
+	return t.Value == TypeTime
+}
+func (t Type) IsDate() bool {
+	return t.Value == TypeDate
+}
+func (t Type) IsDateTime() bool {
+	return t.Value == TypeDateTime
+}
+func (t Type) IsDuration() bool {
+	return t.Value == TypeDuration
 }
 
 func TypeOf(key Key, v interface{}) Type {
@@ -157,7 +235,24 @@ func TypeOf(key Key, v interface{}) Type {
 		t.Value = TypeInt
 		return t
 	case string:
-		t.Value = TypeString
+		if vType == "" {
+			t.Value = TypeString
+		} else if _, err := time.ParseDuration(vType); err == nil {
+			t.Value = TypeDuration
+		} else if _, err := time.Parse(time.DateOnly, vType); err == nil {
+			t.Value = TypeDate
+		} else if _, err := time.Parse(time.TimeOnly, vType); err == nil {
+			t.Value = TypeTime
+		} else if tim, err := dateparse.ParseAny(vType); err == nil {
+			h, m, s := tim.Clock()
+			if h == 0 && m == 0 && s == 0 {
+				t.Value = TypeDate
+			} else {
+				t.Value = TypeDateTime
+			}
+		} else {
+			t.Value = TypeString
+		}
 		return t
 	default:
 		t.Value = TypeNull

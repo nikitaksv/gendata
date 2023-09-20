@@ -5,47 +5,89 @@ import (
 	"io"
 	"log"
 	"os"
-	"strings"
+	"path/filepath"
+	"strconv"
 
-	"github.com/nikitaksv/gendata/pkg/service"
+	"github.com/nikitaksv/gendata/pkg/gen"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	flag "github.com/spf13/pflag"
-	"go.uber.org/zap"
 )
 
 // genCmd represents the gen command
 var genCmd = &cobra.Command{
 	Use: "gen",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		srv := service.NewService(zap.NewNop())
-		rsp, err := srv.GenFile(context.Background(), &service.GenFileRequest{
-			TmplFile:   mustGetString(cmd.Flags(), "tmplFile"),
-			DataFile:   mustGetString(cmd.Flags(), "dataFile"),
-			ConfigFile: mustGetString(cmd.Flags(), "configFile"),
-			Config: &service.Config{
-				Lang:            mustGetString(cmd.Flags(), "lang"),
-				DataFormat:      mustGetString(cmd.Flags(), "dataFormat"),
-				RootClassName:   mustGetString(cmd.Flags(), "rootClassName"),
-				PrefixClassName: mustGetString(cmd.Flags(), "prefixClassName"),
-				SuffixClassName: mustGetString(cmd.Flags(), "suffixClassName"),
-				SortProperties:  mustGetBool(cmd.Flags(), "sort"),
-			},
+		g := gen.NewGen()
+
+		tmplDirPath := mustGetString(cmd.Flags(), "tmplDir")
+		entries, err := os.ReadDir(tmplDirPath)
+		if err != nil {
+			return err
+		}
+
+		tmplFiles := make([]*gen.File, 0, 3)
+		for _, entry := range entries {
+			if entry.IsDir() {
+				continue
+			}
+			if filepath.Ext(entry.Name()) == ".tmpl" {
+				fullPath := filepath.Join(tmplDirPath, entry.Name())
+				f, err := os.Open(fullPath)
+				if err != nil {
+					return errors.WithMessagef(err, "can't open file \"%s\"", fullPath)
+				}
+				tmplFiles = append(tmplFiles, &gen.File{
+					Name: entry.Name(),
+					Body: f,
+				})
+			}
+		}
+
+		dataFilePath := mustGetString(cmd.Flags(), "dataFile")
+		dataFileBody, err := os.Open(dataFilePath)
+		if err != nil {
+			return errors.WithMessagef(err, "can't open data file \"%s\"", dataFilePath)
+		}
+		dataFile := &gen.File{
+			Name: filepath.Base(dataFilePath),
+			Body: dataFileBody,
+		}
+
+		generatedFiles, err := g.Gen(context.Background(), &gen.Params{
+			RootClassName:   mustGetString(cmd.Flags(), "rootClassName"),
+			PrefixClassName: mustGetString(cmd.Flags(), "prefixClassName"),
+			SuffixClassName: mustGetString(cmd.Flags(), "suffixClassName"),
+			SortProperties:  mustGetBool(cmd.Flags(), "sort"),
+			Templates:       tmplFiles,
+			Data:            dataFile,
 		})
 		if err != nil {
 			return err
 		}
 
-		outPath := mustGetString(cmd.Flags(), "out")
-		if !strings.HasSuffix(outPath, string(os.PathSeparator)) {
-			outPath += string(os.PathSeparator)
+		duplNames := map[string]int{}
+		for _, file := range generatedFiles.RenderedFiles {
+			if count, ok := duplNames[file.Name]; ok {
+				duplNames[file.Name] = count + 1
+			} else {
+				duplNames[file.Name] = 0
+			}
 		}
 
-		for _, file := range rsp.RenderedFiles {
-			bs, err := io.ReadAll(file.Content)
+		outPath := mustGetString(cmd.Flags(), "out")
+		for _, file := range generatedFiles.RenderedFiles {
+			count := duplNames[file.Name]
+			name := file.Name
+			if count > 0 {
+				name = strconv.Itoa(count) + "_" + name
+			}
+			path := filepath.Join(outPath, name)
+			bs, err := io.ReadAll(file.Body)
 			if err != nil {
 				return err
 			}
-			if err = os.WriteFile(outPath+file.FileName, bs, 0600); err != nil {
+			if err = os.WriteFile(path, bs, 0600); err != nil {
 				return err
 			}
 		}
@@ -55,21 +97,15 @@ var genCmd = &cobra.Command{
 }
 
 func init() {
-	genCmd.Flags().StringP("tmplFile", "t", "", "Path to template file")
+	genCmd.Flags().StringP("tmplDir", "t", "", "Path to directory with template files")
 	genCmd.Flags().StringP("dataFile", "d", "", "Path to data file")
-	genCmd.Flags().StringP("configFile", "c", "", "Path to config.[json,xml,yaml,yml] file")
 	genCmd.Flags().StringP("out", "o", ".", "Path to output files directory")
-	genCmd.Flags().StringP("lang", "l", "", "Programming language, supported: 'go','php'.")
-	genCmd.Flags().StringP("dataFormat", "", "", "Set manual data format [json] or auto-detect by file extension!")
-	genCmd.Flags().StringP("rootClassName", "", "RootClass", "Name for root (first) object in data")
+	genCmd.Flags().StringP("rootClassName", "", "", "Name for root (first) object in data")
 	genCmd.Flags().StringP("prefixClassName", "", "", "Prefix name class")
 	genCmd.Flags().StringP("suffixClassName", "", "", "Suffix name class")
 	genCmd.Flags().BoolP("sort", "", false, "Sort data objects properties")
 
-	if err := genCmd.MarkFlagRequired("lang"); err != nil {
-		log.Fatal(err)
-	}
-	if err := genCmd.MarkFlagRequired("tmplFile"); err != nil {
+	if err := genCmd.MarkFlagRequired("tmplDir"); err != nil {
 		log.Fatal(err)
 	}
 	if err := genCmd.MarkFlagRequired("dataFile"); err != nil {
